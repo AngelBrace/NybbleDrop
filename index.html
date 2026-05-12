@@ -297,7 +297,7 @@
                 <span class="stat-label">SCORE</span>
             </div>
             <div class="stat">
-                <span id="clears" class="stat-value">000</span>
+                <span id="bits" class="stat-value">000</span>
                 <span class="stat-label">BITS</span>
             </div>
             <div class="stat">
@@ -407,7 +407,7 @@
         let currentPiece = null;
         let nextNybble = null;
         let score = 0;
-        let clears = 0;
+        let bits = 0;
         let byteClears = 0;
         let level = 1;
         let highScore = Number(localStorage.getItem('nybbleHighScore')) || 0;
@@ -787,7 +787,7 @@
         
         function updateUI() {
             document.getElementById('score').textContent = String(Math.floor(score)).padStart(6, '0');
-            document.getElementById('clears').textContent = String(clears).padStart(3, '0');
+            document.getElementById('bits').textContent = String(bits).padStart(3, '0');
             document.getElementById('level').textContent = String(level).padStart(2, '0');
             document.getElementById('byte-clears').textContent = String(byteClears).padStart(3, '0');
             document.getElementById('high-score').textContent = String(highScore).padStart(6, '0');
@@ -821,9 +821,9 @@
                             highlightDone = false;
                             const { totalRemoved, onesCount } = resolveAllDoomed();
                             if (totalRemoved > 0) {
-                                const prevLevel5 = Math.floor(clears / 5);
-                                clears += onesCount;
-                                const newLevel5 = Math.floor(clears / 5);
+                                const prevLevel5 = Math.floor(bits / 5);
+                                bits += onesCount;
+                                const newLevel5 = Math.floor(bits / 5);
                                 if (newLevel5 > prevLevel5 && level < 20) {
                                     level = Math.min(level + 1, 20);
                                 }
@@ -857,7 +857,7 @@
         
         function startGame() {
             board = Array.from({ length: HEIGHT }, () => Array(WIDTH).fill(null));
-            score = 0; clears = 0; byteClears = 0; level = 1; dropInterval = 1000;
+            score = 0; bits = 0; byteClears = 0; level = 1; dropInterval = 1000;
             gameOverFlag = false; paused = false; gameRunning = true; isSettling = false; wHeld = false; sHeld = false; highlightCells = null; highlightDone = false;
             
             nextNybble = Math.floor(Math.random() * 16);
