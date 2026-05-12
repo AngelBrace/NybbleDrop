@@ -903,6 +903,8 @@
         }
 
         function handleKey(e) {
+            if (e.key === 'p' || e.key === 'P') { pauseGame(); return; }
+
             if (e.key === 'w' || e.key === 'W') {
                 if (gameRunning && !paused && !gameOverFlag && !isSettling) wHeld = true;
                 setKeyLight('w', true);
