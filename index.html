@@ -420,6 +420,9 @@
         let gravityTimer = 0;
         let wHeld = false;
         let sHeld = false;
+        let highlightCells = null; // Set of "r,c" strings lit green before cancel
+        let highlightTimer  = 0;
+        const HIGHLIGHT_MS  = 450;
         
         class Piece {
             constructor() {
@@ -556,6 +559,21 @@
             while (hasAnyFloatingDigits()) performGravityStep();
             gravityTimer = 0; // age the timer so the next game-loop tick fires cancel logic immediately
             drawBoard();
+        }
+
+        // Returns the set of board positions (as "r,c" strings) that are 1s
+        // vertically adjacent to another 1 -- these are the cells that will be cancelled.
+        function findConnected1s() {
+            const result = new Set();
+            for (let r = 0; r < HEIGHT; r++) {
+                for (let c = 0; c < WIDTH; c++) {
+                    if (board[r][c] !== '1') continue;
+                    if ((r > 0 && board[r-1][c] === '1') || (r < HEIGHT-1 && board[r+1][c] === '1')) {
+                        result.add(`${r},${c}`);
+                    }
+                }
+            }
+            return result;
         }
         
         // Vertical-only same-digit cancel.
@@ -731,9 +749,11 @@
             for (let r = 0; r < HEIGHT; r++) {
                 for (let c = 0; c < WIDTH; c++) {
                     if (board[r][c] !== null) {
-                        ctx.shadowColor = '#00ffcc';
-                        ctx.shadowBlur = 18;
-                        ctx.fillStyle = '#00ffcc';
+                        const lit = highlightCells && highlightCells.has(`${r},${c}`);
+                        const color = lit ? '#39ff14' : '#00ffcc';
+                        ctx.shadowColor = color;
+                        ctx.shadowBlur = lit ? 28 : 18;
+                        ctx.fillStyle = color;
                         ctx.fillText(board[r][c], c*CELL + CELL/2, r*CELL + CELL/2 + 2);
                     }
                 }
@@ -780,11 +800,24 @@
             }
             
             if (isSettling) {
-                if (timestamp - gravityTimer > dropInterval) {
+                // Highlight phase: briefly show connected 1s in green before cancelling
+                if (highlightCells !== null) {
+                    if (timestamp - highlightTimer >= HIGHLIGHT_MS) {
+                        highlightCells = null;
+                        gravityTimer = 0; // proceed to cancel on next frame
+                    }
+                } else if (timestamp - gravityTimer > dropInterval) {
                     if (hasAnyFloatingDigits()) {
                         // Phase 1: gravity -- drop all floating digits one step
                         performGravityStep();
                     } else {
+                        // After gravity, flash any connected 1s green before cancelling
+                        const connected = findConnected1s();
+                        if (connected.size > 0) {
+                            highlightCells = connected;
+                            highlightTimer = timestamp;
+                            gravityTimer = timestamp; // hold here until highlight expires
+                        } else {
                         // Phase 2: cancel -- remove vertically adjacent same-digit pairs
                         const { cancelScore, onesCount, totalCancels } = resolveAdjacent();
                         if (totalCancels > 0) {
@@ -811,6 +844,7 @@
                             spawnNewPiece();
                         }
                     }
+                    } // end else (no connected 1s to highlight)
                     gravityTimer = timestamp;
                 }
             } 
@@ -828,7 +862,7 @@
         function startGame() {
             board = Array.from({ length: HEIGHT }, () => Array(WIDTH).fill(null));
             score = 0; clears = 0; byteClears = 0; level = 1; dropInterval = 1000;
-            gameOverFlag = false; paused = false; gameRunning = true; isSettling = false; wHeld = false; sHeld = false;
+            gameOverFlag = false; paused = false; gameRunning = true; isSettling = false; wHeld = false; sHeld = false; highlightCells = null;
             
             nextNybble = Math.floor(Math.random() * 16);
             spawnNewPiece();
