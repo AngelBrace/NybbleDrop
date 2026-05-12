@@ -1,0 +1,891 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NybbleDrop - Binary Tetris</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+        
+        :root {
+            --bg: #0a0a1f;
+            --accent: #00ffcc;
+            --text: #ffffff;
+        }
+        
+        body {
+            margin: 0;
+            padding: 0;
+            background: var(--bg);
+            color: var(--text);
+            font-family: 'Press Start 2P', system-ui;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            overflow: hidden;
+        }
+        
+        header {
+            width: 100%;
+            max-width: 1080px;
+            padding: 20px 40px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 4px solid var(--accent);
+            background: rgba(10, 10, 31, 0.95);
+            box-shadow: 0 0 20px var(--accent);
+        }
+        
+        .title {
+            font-size: 28px;
+            letter-spacing: 4px;
+            text-shadow: 0 0 15px var(--accent);
+            color: var(--accent);
+        }
+        
+        .stats {
+            display: flex;
+            gap: 40px;
+            font-size: 18px;
+        }
+        
+        .stat { text-align: center; }
+        .stat-label {
+            font-size: 12px;
+            opacity: 0.7;
+            display: block;
+        }
+        
+        .main {
+            display: flex;
+            gap: 30px;
+            padding: 30px 20px;
+            max-width: 1080px;
+            width: 100%;
+        }
+        
+        #game-container { position: relative; }
+        
+        canvas {
+            border: 6px solid var(--accent);
+            box-shadow: 0 0 30px var(--accent), inset 0 0 30px rgba(0, 255, 204, 0.3);
+            image-rendering: pixelated;
+            background: #111122;
+        }
+        
+        .side-panel {
+            width: 420px;
+            background: rgba(17, 17, 34, 0.9);
+            border: 6px solid var(--accent);
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            box-shadow: 0 0 30px var(--accent);
+        }
+        
+        .next-container { text-align: center; }
+        .next-label {
+            font-size: 14px;
+            margin-bottom: 10px;
+            color: var(--accent);
+        }
+        
+        #next-canvas {
+            border: 4px solid var(--accent);
+            background: #111122;
+        }
+        
+        .instructions {
+            font-size: 13px;
+            line-height: 1.6;
+        }
+        
+        .instructions h3 {
+            font-size: 16px;
+            margin: 0 0 15px 0;
+            color: var(--accent);
+        }
+        
+        .nybble-info-bar {
+            display: flex;
+            gap: 30px;
+            justify-content: center;
+            align-items: center;
+            font-size: 16px;
+            padding: 14px 0 4px;
+            color: var(--accent);
+            text-shadow: 0 0 10px var(--accent);
+            letter-spacing: 2px;
+        }
+        .nybble-sep { opacity: 0.4; }
+        
+        .footer {
+            width: 100%;
+            max-width: 1080px;
+            padding: 20px 40px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 14px;
+            background: rgba(10, 10, 31, 0.95);
+        }
+        
+        button {
+            font-family: 'Press Start 2P', system-ui;
+            padding: 14px 24px;
+            font-size: 16px;
+            background: transparent;
+            color: var(--accent);
+            border: 4px solid var(--accent);
+            cursor: pointer;
+            box-shadow: 0 0 15px var(--accent);
+            transition: all 0.2s;
+        }
+        
+        button:hover {
+            background: var(--accent);
+            color: #111122;
+            transform: scale(1.05);
+        }
+        
+        .game-over-overlay {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: rgba(10, 10, 31, 0.95);
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+            text-align: center;
+            border: 6px solid #ff0066;
+        }
+        
+        .game-over-overlay h1 {
+            font-size: 42px;
+            color: #ff0066;
+            text-shadow: 0 0 20px #ff0066;
+            margin-bottom: 20px;
+        }
+        
+        .blink { animation: blink 1s infinite; }
+        @keyframes blink { 50% { opacity: 0.3; } }
+
+        /* Key visualizer */
+        .key-display {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            align-items: center;
+            padding-top: 4px;
+        }
+        .key-row {
+            display: flex;
+            gap: 6px;
+        }
+        .key {
+            width: 60px;
+            height: 60px;
+            border: 2px solid rgba(0, 255, 204, 0.4);
+            border-radius: 6px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+            background: rgba(0, 255, 204, 0.04);
+            transition: background 0.07s, box-shadow 0.07s, border-color 0.07s;
+            cursor: default;
+        }
+        .key.active {
+            background: var(--accent);
+            border-color: var(--accent);
+            box-shadow: 0 0 14px var(--accent);
+        }
+        .key-letter {
+            font-family: 'Press Start 2P', system-ui;
+            font-size: 15px;
+            color: var(--accent);
+            transition: color 0.07s;
+        }
+        .key.active .key-letter { color: #111122; }
+        .key-fn {
+            font-family: 'Press Start 2P', system-ui;
+            font-size: 7px;
+            color: rgba(0, 255, 204, 0.55);
+            text-align: center;
+            line-height: 1.1;
+            transition: color 0.07s;
+        }
+        .key.active .key-fn { color: rgba(17, 17, 34, 0.75); }
+
+        /* Byte clear flash overlay */
+        .byte-flash {
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            pointer-events: none;
+            z-index: 200;
+            display: none;
+        }
+        .byte-flash .flash-label {
+            font-family: 'Press Start 2P', system-ui;
+            font-size: 22px;
+            color: #ffff00;
+            text-shadow: 0 0 20px #ffff00, 0 0 40px #ffff00;
+            animation: flashPulse 0.5s ease-in-out infinite alternate;
+            white-space: nowrap;
+        }
+        .byte-flash .flash-score {
+            font-family: 'Press Start 2P', system-ui;
+            font-size: 56px;
+            color: #ffffff;
+            text-shadow: 0 0 30px #00ffcc, 0 0 60px #00ffcc;
+            display: none;
+        }
+        @keyframes flashPulse {
+            from { opacity: 1; transform: scale(1); }
+            to   { opacity: 0.4; transform: scale(1.08); }
+        }
+        @keyframes flashFade {
+            from { opacity: 1; }
+            to   { opacity: 0; }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="title">NYBBLEDROP</div>
+        <div class="stats">
+            <div class="stat">
+                <span id="score" class="stat-value">000000</span>
+                <span class="stat-label">SCORE</span>
+            </div>
+            <div class="stat">
+                <span id="clears" class="stat-value">000</span>
+                <span class="stat-label">CLEARS</span>
+            </div>
+            <div class="stat">
+                <span id="level" class="stat-value">01</span>
+                <span class="stat-label">LEVEL</span>
+            </div>
+        </div>
+        <div style="display: flex; gap: 15px;">
+            <button id="pause-btn">PAUSE</button>
+            <button id="restart-btn">START</button>
+        </div>
+    </header>
+
+    <div class="main">
+        <div id="game-container">
+            <canvas id="board" width="640" height="800"></canvas>
+
+            <!-- Byte clear flash overlay -->
+            <div id="byte-flash" class="byte-flash">
+                <div class="flash-label">FULL BYTE SCORE!</div>
+                <div id="flash-score" class="flash-score">255</div>
+            </div>
+            
+            <div id="game-over" class="game-over-overlay">
+                <h1 class="blink">GAME OVER</h1>
+                <p style="margin: 10px 0 30px; font-size: 18px;">FINAL SCORE: <span id="final-score" style="color:#00ffcc;">000000</span></p>
+                <button onclick="restartGame()" style="font-size:20px; padding:18px 40px;">TRY AGAIN</button>
+                <p style="margin-top: 40px; font-size:12px; opacity:0.6;">The binary pile reached the top...</p>
+            </div>
+        </div>
+
+        <div class="side-panel">
+            <div class="next-container">
+                <div class="next-label">NEXT NYBBLE</div>
+                <canvas id="next-canvas" width="260" height="120"></canvas>
+            </div>
+
+            <div class="instructions">
+                <h3>HOW TO PLAY</h3>
+                <ul style="padding-left:20px; margin:0; list-style:none;">
+                    <li style="margin-bottom:8px;">&#9664; <strong>A</strong> &mdash; Move Left</li>
+                    <li style="margin-bottom:8px;">&#9654; <strong>D</strong> &mdash; Move Right</li>
+                    <li style="margin-bottom:8px;">&#8633; <strong>W</strong> &mdash; Hold to Freeze</li>
+                    <li style="margin-bottom:8px;">&#8635; <strong>E</strong> &mdash; Rotate Clockwise</li>
+                    <li style="margin-bottom:8px;">&#8634; <strong>Q</strong> &mdash; Rotate Counter-CW</li>
+                    <li style="margin-bottom:8px;">&#8595; <strong>S / SPACE</strong> &mdash; Hard Drop</li>
+                </ul>
+                <p style="margin-top:20px; margin-bottom:0; font-size:12px; line-height:1.4; opacity:0.8;">
+                    Connect 1's for Points<br>
+                    11 = 3 points<br>
+                    111 = 7 points<br>
+                    1111 = 15 points<br>
+                    11111 = 31 points<br>
+                    111111 = 63 points<br>
+                    11111111 = 255 points
+                </p>
+            </div>
+
+            <!-- Key visualizer -->
+            <div class="key-display" style="margin-top:8px;">
+                <div class="key-row">
+                    <div class="key" id="key-q"><span class="key-letter">Q</span><span class="key-fn">CCW</span></div>
+                    <div class="key" id="key-w"><span class="key-letter">W</span><span class="key-fn">HOLD</span></div>
+                    <div class="key" id="key-e"><span class="key-letter">E</span><span class="key-fn">CW</span></div>
+                </div>
+                <div class="key-row">
+                    <div class="key" id="key-a"><span class="key-letter">A</span><span class="key-fn">&#9664;</span></div>
+                    <div class="key" id="key-s"><span class="key-letter">S</span><span class="key-fn">DROP</span></div>
+                    <div class="key" id="key-d"><span class="key-letter">D</span><span class="key-fn">&#9654;</span></div>
+                </div>
+            </div>
+
+            <div style="margin-top:auto; padding-top:16px; padding-bottom:4px; border-top:2px dashed #00ffcc;">
+                <div style="display:flex; justify-content:space-between; font-size:14px; margin-bottom:10px;">
+                    <span>BYTES</span>
+                    <span id="byte-clears">000</span>
+                </div>
+                <div style="display:flex; justify-content:space-between; font-size:14px;">
+                    <span>HIGH SCORE</span>
+                    <span id="high-score">000000</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="nybble-info-bar">
+        <span id="nybble-bin">BIN: ----</span>
+        <span class="nybble-sep">|</span>
+        <span id="nybble-hex">HEX: -</span>
+        <span class="nybble-sep">|</span>
+        <span id="nybble-dec">DEC: --</span>
+    </div>
+
+    <div class="footer">
+        <div>GRID: 8 &times; 10 &bull; BREAK-APART PHYSICS</div>
+        <div id="status" style="color:#00ffcc;">READY</div>
+        <div>PRESS START TO PLAY</div>
+    </div>
+
+    <script>
+        const WIDTH = 8;
+        const HEIGHT = 10;
+        const CELL = 80;
+        
+        const canvas = document.getElementById('board');
+        const ctx = canvas.getContext('2d');
+        const nextCanvas = document.getElementById('next-canvas');
+        const nextCtx = nextCanvas.getContext('2d');
+        
+        let board = Array.from({ length: HEIGHT }, () => Array(WIDTH).fill(null));
+        let currentPiece = null;
+        let nextNybble = null;
+        let score = 0;
+        let clears = 0;
+        let byteClears = 0;
+        let level = 1;
+        let highScore = Number(localStorage.getItem('nybbleHighScore')) || 0;
+        let dropInterval = 1000;
+        let lastDropTime = 0;
+        let gameRunning = false;
+        let paused = false;
+        let gameOverFlag = false;
+        let rafId = null;
+        let isSettling = false;
+        let gravityTimer = 0;
+        let wHeld = false;
+        
+        class Piece {
+            constructor() {
+                this.nybble = nextNybble !== null ? nextNybble : Math.floor(Math.random() * 16);
+                this.binStr = this.nybble.toString(2).padStart(4, '0');
+                this.digits = this.binStr.split('');
+                this.orientation = 'horizontal';
+                this.x = Math.floor(Math.random() * (WIDTH - 3));
+                this.y = 0;
+            }
+        }
+        
+        function getPiecePositions(piece) {
+            const positions = [];
+            if (piece.orientation === 'horizontal') {
+                for (let i = 0; i < piece.digits.length; i++) {
+                    positions.push({ r: piece.y, c: piece.x + i, d: piece.digits[i] });
+                }
+            } else {
+                for (let i = 0; i < piece.digits.length; i++) {
+                    positions.push({ r: piece.y + i, c: piece.x, d: piece.digits[i] });
+                }
+            }
+            return positions;
+        }
+        
+        function isValid(piece) {
+            const positions = getPiecePositions(piece);
+            for (let p of positions) {
+                if (p.r < 0 || p.r >= HEIGHT || p.c < 0 || p.c >= WIDTH) return false;
+                if (board[p.r][p.c] !== null) return false;
+            }
+            return true;
+        }
+        
+        function rotatePiece(clockwise) {
+            if (!currentPiece) return;
+            const temp = { ...currentPiece, digits: [...currentPiece.digits], orientation: currentPiece.orientation };
+            if (clockwise) {
+                if (temp.orientation === 'horizontal') {
+                    temp.orientation = 'vertical';
+                    temp.x += 1;   // center-pivot: shift right so column aligns with piece center
+                    temp.y -= 1;   // center-pivot: shift up so vertical span is centered on pivot row
+                } else {
+                    temp.orientation = 'horizontal';
+                    temp.digits = [...temp.digits].reverse();
+                    temp.x -= 1;   // center-pivot: reverse of above
+                    temp.y += 1;
+                }
+            } else {
+                if (temp.orientation === 'horizontal') {
+                    temp.orientation = 'vertical';
+                    temp.digits = [...temp.digits].reverse();
+                    temp.x += 1;   // center-pivot
+                    temp.y -= 1;
+                } else {
+                    temp.orientation = 'horizontal';
+                    temp.x -= 1;   // center-pivot
+                    temp.y += 1;
+                }
+            }
+            // Wall-kick: try the pivot position first, then nudge left/right until valid
+            const kicks = [0, -1, 1, -2, 2];
+            for (const dx of kicks) {
+                const kicked = { ...temp, x: temp.x + dx };
+                if (isValid(kicked)) { currentPiece = kicked; return; }
+            }
+            // All kick positions blocked -- rotation rejected
+        }
+        
+        function moveHorizontal(dir) {
+            if (!currentPiece) return;
+            const temp = { ...currentPiece, x: currentPiece.x + dir };
+            if (isValid(temp)) currentPiece.x += dir;
+        }
+        
+        function moveDown() {
+            if (!currentPiece) return false;
+            const temp = { ...currentPiece, y: currentPiece.y + 1 };
+            if (isValid(temp)) { currentPiece.y++; return true; }
+            return false;
+        }
+        
+        function hardDrop() {
+            if (!currentPiece || isSettling) return;
+            while (moveDown()) {}
+            lockPiece();
+        }
+        
+        // Stamp all digits unconditionally into the board.
+        // Digits above empty space will be picked up by performGravityStep
+        // and fall further -- the "break apart" effect is emergent.
+        function lockPiece() {
+            if (!currentPiece || isSettling) return;
+            
+            const positions = getPiecePositions(currentPiece);
+            for (let p of positions) {
+                board[p.r][p.c] = p.d;
+            }
+            currentPiece = null;
+            
+            score += 10;
+            updateUI();
+            
+            isSettling = true;
+            gravityTimer = performance.now();
+        }
+        
+        function hasAnyFloatingDigits() {
+            for (let c = 0; c < WIDTH; c++) {
+                for (let r = 0; r < HEIGHT - 1; r++) {
+                    if (board[r][c] !== null && board[r + 1][c] === null) return true;
+                }
+            }
+            return false;
+        }
+        
+        function performGravityStep() {
+            let moved = false;
+            for (let c = 0; c < WIDTH; c++) {
+                for (let r = HEIGHT - 2; r >= 0; r--) {
+                    if (board[r][c] !== null && board[r + 1][c] === null) {
+                        board[r + 1][c] = board[r][c];
+                        board[r][c] = null;
+                        moved = true;
+                    }
+                }
+            }
+            return moved;
+        }
+        
+        // Vertical-only same-digit cancel.
+        // Cancelled 0s clear the board but score 0 and do not count toward level progression.
+        // Cancelled 1s score 2^N - 1 per contiguous vertical run (binary stack value).
+        // Horizontal adjacency is intentionally ignored -- only a full 8-bit row (255) clears sideways.
+        function resolveAdjacent() {
+            const toRemove = new Set();
+            const dirs = [[1,0],[-1,0]];  // vertical only
+            for (let r = 0; r < HEIGHT; r++) {
+                for (let c = 0; c < WIDTH; c++) {
+                    if (board[r][c] === null) continue;
+                    for (const [dr, dc] of dirs) {
+                        const nr = r + dr, nc = c + dc;
+                        if (nr >= 0 && nr < HEIGHT && nc >= 0 && nc < WIDTH
+                                && board[nr][nc] === board[r][c]) {
+                            toRemove.add(`${r},${c}`);
+                            toRemove.add(`${nr},${nc}`);
+                        }
+                    }
+                }
+            }
+
+            // Score contiguous vertical runs of '1' per column (2^N - 1 per run).
+            let cancelScore = 0;
+            let onesCount = 0;
+
+            for (let c = 0; c < WIDTH; c++) {
+                let runLen = 0;
+                for (let r = 0; r < HEIGHT; r++) {
+                    if (toRemove.has(`${r},${c}`) && board[r][c] === '1') {
+                        runLen++;
+                    } else {
+                        if (runLen > 0) {
+                            cancelScore += (Math.pow(2, runLen) - 1);
+                            onesCount += runLen;
+                            runLen = 0;
+                        }
+                    }
+                }
+                if (runLen > 0) {
+                    cancelScore += (Math.pow(2, runLen) - 1);
+                    onesCount += runLen;
+                }
+            }
+
+            for (const key of toRemove) {
+                const [r, c] = key.split(',').map(Number);
+                board[r][c] = null;
+            }
+
+            return { cancelScore, onesCount, totalCancels: toRemove.size };
+        }
+
+        // Check for complete bytes: a full row of 8 ones (row byte) or 8 consecutive ones
+        // in a column (column byte). Row bytes take priority. Only one byte is cleared per
+        // call -- the settle loop re-enters gravity naturally after each clear.
+        // Returns true if a byte was cleared (+255 pts awarded).
+        function checkCompleteByte() {
+            // Row byte: all WIDTH cells in any row are '1', search from bottom up
+            for (let r = HEIGHT - 1; r >= 0; r--) {
+                if (board[r].every(cell => cell === '1')) {
+                    board.splice(r, 1);
+                    board.unshift(Array(WIDTH).fill(null));
+                    score += 255;
+                    byteClears++;
+                    queueFlash('FULL BYTE SCORE!');
+                    updateUI();
+                    return true;
+                }
+            }
+            // Column byte: 8 consecutive '1's anywhere in a column, search from bottom up
+            for (let c = 0; c < WIDTH; c++) {
+                for (let startR = HEIGHT - 8; startR >= 0; startR--) {
+                    let isByte = true;
+                    for (let i = 0; i < 8; i++) {
+                        if (board[startR + i][c] !== '1') { isByte = false; break; }
+                    }
+                    if (isByte) {
+                        // Null out the 8 cells; gravity in the settle loop resettles the column
+                        for (let i = 0; i < 8; i++) board[startR + i][c] = null;
+                        score += 255;
+                        byteClears++;
+                        queueFlash('FULL BYTE SCORE!');
+                        updateUI();
+                        return true;
+                    }
+                }
+            }
+            return false;
+        }
+
+        // Queued flash system -- messages stack up and play one at a time, never overlapping.
+        const flashQueue = [];
+        let flashBusy = false;
+
+        function queueFlash(labelText) {
+            flashQueue.push(labelText);
+            if (!flashBusy) runNextFlash();
+        }
+
+        function runNextFlash() {
+            if (flashQueue.length === 0) { flashBusy = false; return; }
+            flashBusy = true;
+            const labelText = flashQueue.shift();
+
+            const el      = document.getElementById('byte-flash');
+            const label   = el.querySelector('.flash-label');
+            const scoreEl = document.getElementById('flash-score');
+
+            label.textContent = labelText;
+            el.style.animation = '';
+            el.style.opacity   = '1';
+            el.style.display   = 'block';
+            label.style.display   = 'block';
+            scoreEl.style.display = 'none';
+
+            setTimeout(() => {
+                label.style.display   = 'none';
+                scoreEl.style.display = 'block';
+            }, 1400);
+
+            setTimeout(() => {
+                el.style.animation = 'flashFade 0.4s forwards';
+                setTimeout(() => {
+                    el.style.display = 'none';
+                    runNextFlash(); // play next queued message, if any
+                }, 400);
+            }, 2800);
+        }
+        
+        function spawnNewPiece() {
+            currentPiece = new Piece();
+            nextNybble = Math.floor(Math.random() * 16);
+            
+            if (!isValid(currentPiece)) {
+                endGame();
+                return;
+            }
+            
+            updateNybbleInfo(currentPiece.nybble);
+            drawNextPiece();
+            isSettling = false;
+            
+            lastDropTime = performance.now() - dropInterval;
+        }
+        
+        function updateNybbleInfo(nybble) {
+            if (nybble === null || nybble === undefined) return;
+            document.getElementById('nybble-bin').textContent =
+                'BIN: ' + nybble.toString(2).padStart(4, '0');
+            document.getElementById('nybble-hex').textContent =
+                'HEX: ' + nybble.toString(16).toUpperCase();
+            document.getElementById('nybble-dec').textContent =
+                'DEC: ' + String(nybble).padStart(2, '0');
+        }
+        
+        function drawBoard() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            ctx.strokeStyle = 'rgba(0, 255, 204, 0.2)';
+            ctx.lineWidth = 1;
+            for (let x = 0; x <= WIDTH; x++) {
+                ctx.beginPath(); ctx.moveTo(x*CELL, 0); ctx.lineTo(x*CELL, canvas.height); ctx.stroke();
+            }
+            for (let y = 0; y <= HEIGHT; y++) {
+                ctx.beginPath(); ctx.moveTo(0, y*CELL); ctx.lineTo(canvas.width, y*CELL); ctx.stroke();
+            }
+            
+            ctx.font = 'bold 56px monospace';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            for (let r = 0; r < HEIGHT; r++) {
+                for (let c = 0; c < WIDTH; c++) {
+                    if (board[r][c] !== null) {
+                        ctx.shadowColor = '#00ffcc';
+                        ctx.shadowBlur = 24;
+                        ctx.fillStyle = '#00ffcc';
+                        ctx.fillText(board[r][c], c*CELL + CELL/2, r*CELL + CELL/2 + 2);
+                    }
+                }
+            }
+            
+            if (currentPiece) {
+                const pos = getPiecePositions(currentPiece);
+                ctx.shadowColor = '#ffffff';
+                ctx.shadowBlur = 40;
+                ctx.fillStyle = '#ffffff';
+                for (let p of pos) {
+                    if (p.r >= 0) ctx.fillText(p.d, p.c*CELL + CELL/2, p.r*CELL + CELL/2 + 2);
+                }
+                ctx.shadowBlur = 0;
+            }
+        }
+        
+        function drawNextPiece() {
+            nextCtx.clearRect(0, 0, nextCanvas.width, nextCanvas.height);
+            if (nextNybble === null) return;
+            const digits = nextNybble.toString(2).padStart(4, '0').split('');
+            nextCtx.font = 'bold 48px monospace';
+            nextCtx.shadowColor = '#00ffcc';
+            nextCtx.shadowBlur = 15;
+            nextCtx.fillStyle = '#00ffcc';
+            for (let i = 0; i < 4; i++) {
+                nextCtx.fillText(digits[i], 30 + i*52, 60);
+            }
+            nextCtx.shadowBlur = 0;
+        }
+        
+        function updateUI() {
+            document.getElementById('score').textContent = String(Math.floor(score)).padStart(6, '0');
+            document.getElementById('clears').textContent = String(clears).padStart(3, '0');
+            document.getElementById('level').textContent = String(level).padStart(2, '0');
+            document.getElementById('byte-clears').textContent = String(byteClears).padStart(3, '0');
+            document.getElementById('high-score').textContent = String(highScore).padStart(6, '0');
+        }
+        
+        function gameLoop(timestamp) {
+            if (!gameRunning || paused || gameOverFlag) {
+                rafId = requestAnimationFrame(gameLoop);
+                return;
+            }
+            
+            if (isSettling) {
+                if (timestamp - gravityTimer > dropInterval) {
+                    if (hasAnyFloatingDigits()) {
+                        // Phase 1: gravity -- drop all floating digits one step
+                        performGravityStep();
+                    } else {
+                        // Phase 2: cancel -- remove vertically adjacent same-digit pairs
+                        const { cancelScore, onesCount, totalCancels } = resolveAdjacent();
+                        if (totalCancels > 0) {
+                            score += cancelScore * level;  // binary stack score x level
+                            const prevLevel5 = Math.floor(clears / 5);
+                            clears += onesCount;           // only 1-cancels advance level
+                            const newLevel5 = Math.floor(clears / 5);
+                            if (newLevel5 > prevLevel5 && level < 20) {
+                                level = Math.min(level + 1, 20);
+                            }
+                            updateUI();
+                            // cancellations create new gaps -- gravity resumes next tick
+                        } else if (checkCompleteByte()) {
+                            // Phase 3: byte clear -- a full 255 row or column byte was cleared
+                            // score and UI already updated; gravity resumes next tick
+                        } else {
+                            // Board fully settled, no more matches or bytes
+                            if (board.every(row => row.every(cell => cell === null))) {
+                                score += 255;
+                                queueFlash('CLEARED!');
+                                updateUI();
+                            }
+                            isSettling = false;
+                            spawnNewPiece();
+                        }
+                    }
+                    gravityTimer = timestamp;
+                }
+            } 
+            else if (timestamp - lastDropTime > dropInterval) {
+                if (!wHeld) {
+                    if (!moveDown()) lockPiece();
+                }
+                // Always reset the timer -- releasing W starts a fresh interval, no instant drop
+                lastDropTime = timestamp;
+            }
+            
+            drawBoard();
+            rafId = requestAnimationFrame(gameLoop);
+        }
+        
+        function startGame() {
+            board = Array.from({ length: HEIGHT }, () => Array(WIDTH).fill(null));
+            score = 0; clears = 0; byteClears = 0; level = 1; dropInterval = 1000;
+            gameOverFlag = false; paused = false; gameRunning = true; isSettling = false; wHeld = false;
+            
+            nextNybble = Math.floor(Math.random() * 16);
+            spawnNewPiece();
+            lastDropTime = performance.now() - dropInterval;
+            updateUI();
+            document.getElementById('status').textContent = 'PLAYING';
+            document.getElementById('pause-btn').textContent = 'PAUSE';
+            document.getElementById('restart-btn').textContent = 'RESTART';
+            document.getElementById('game-over').style.display = 'none';
+            flashQueue.length = 0;
+            flashBusy = false;
+            document.getElementById('byte-flash').style.display = 'none';
+            ['q','w','e','a','s','d'].forEach(k => setKeyLight(k, false));
+        }
+        
+        function endGame() {
+            gameRunning = false; gameOverFlag = true;
+            if (score > highScore) {
+                highScore = score;
+                localStorage.setItem('nybbleHighScore', highScore);
+            }
+            document.getElementById('final-score').textContent = String(Math.floor(score)).padStart(6, '0');
+            document.getElementById('game-over').style.display = 'flex';
+            document.getElementById('status').textContent = 'GAME OVER';
+        }
+        
+        function pauseGame() {
+            if (!gameRunning || gameOverFlag) return;
+            paused = !paused;
+            document.getElementById('pause-btn').textContent = paused ? 'RESUME' : 'PAUSE';
+            document.getElementById('status').textContent = paused ? 'PAUSED' : 'PLAYING';
+        }
+        
+        function restartGame() {
+            document.getElementById('game-over').style.display = 'none';
+            startGame();
+        }
+        
+        function setKeyLight(id, on) {
+            const el = document.getElementById('key-' + id);
+            if (el) el.classList.toggle('active', on);
+        }
+
+        function handleKey(e) {
+            if (e.key === 'w' || e.key === 'W') {
+                if (gameRunning && !paused && !gameOverFlag && !isSettling) wHeld = true;
+                setKeyLight('w', true);
+                return; // W is hold-only -- no other action on keydown
+            }
+
+            // Light up key regardless of game state
+            if (e.key === 'q' || e.key === 'Q') setKeyLight('q', true);
+            if (e.key === 'e' || e.key === 'E') setKeyLight('e', true);
+            if (e.key === 'a' || e.key === 'A') setKeyLight('a', true);
+            if (e.key === 's' || e.key === 'S' || e.key === ' ') setKeyLight('s', true);
+            if (e.key === 'd' || e.key === 'D') setKeyLight('d', true);
+
+            if (!gameRunning || paused || gameOverFlag || isSettling) return;
+
+            if (['a','A','ArrowLeft'].includes(e.key))  moveHorizontal(-1);
+            if (['d','D','ArrowRight'].includes(e.key)) moveHorizontal(1);
+            if (['q','Q'].includes(e.key))              rotatePiece(false);  // CCW
+            if (['e','E','ArrowUp'].includes(e.key))    rotatePiece(true);   // CW
+            if (['ArrowDown'].includes(e.key))          rotatePiece(false);  // CCW (arrow)
+            if (['s','S',' '].includes(e.key))          { e.preventDefault(); hardDrop(); }
+
+            drawBoard();
+        }
+
+        function handleKeyUp(e) {
+            if (e.key === 'w' || e.key === 'W') { wHeld = false; setKeyLight('w', false); }
+            if (e.key === 'q' || e.key === 'Q') setKeyLight('q', false);
+            if (e.key === 'e' || e.key === 'E') setKeyLight('e', false);
+            if (e.key === 'a' || e.key === 'A') setKeyLight('a', false);
+            if (e.key === 's' || e.key === 'S' || e.key === ' ') setKeyLight('s', false);
+            if (e.key === 'd' || e.key === 'D') setKeyLight('d', false);
+        }
+
+        document.getElementById('pause-btn').addEventListener('click', pauseGame);
+        document.getElementById('restart-btn').addEventListener('click', startGame);
+        window.addEventListener('keydown', handleKey);
+        window.addEventListener('keyup', handleKeyUp);
+        
+        window.onload = () => {
+            highScore = Number(localStorage.getItem('nybbleHighScore')) || 0;
+            updateUI();
+            drawBoard();
+            rafId = requestAnimationFrame(gameLoop);
+        };
+    </script>
+</body>
+</html>
