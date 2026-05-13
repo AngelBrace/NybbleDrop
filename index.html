@@ -132,8 +132,9 @@
         
         .instructions h3 {
             font-size: 16px;
-            margin: 0 0 15px 0;
+            margin: 14px 0 15px 0;
             color: var(--accent);
+            text-align: center;
         }
         
         .nybble-info-bar {
@@ -824,11 +825,16 @@
             if (nextNybble === null) return;
             const digits = nextNybble.toString(2).padStart(4, '0').split('');
             nextCtx.font = 'bold 48px monospace';
+            nextCtx.textAlign    = 'center';
+            nextCtx.textBaseline = 'middle';
             nextCtx.shadowColor = '#00ffcc';
             nextCtx.shadowBlur = 15;
             nextCtx.fillStyle = '#00ffcc';
+            const cx = nextCanvas.width / 2;
+            const cy = nextCanvas.height / 2;
+            const spacing = 52;
             for (let i = 0; i < 4; i++) {
-                nextCtx.fillText(digits[i], 30 + i*52, 60);
+                nextCtx.fillText(digits[i], cx + (i - 1.5) * spacing, cy);
             }
             nextCtx.shadowBlur = 0;
         }
