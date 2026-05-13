@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=1220">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>NybbleDrop - Binary Tetris</title>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
@@ -296,6 +296,74 @@
             from { opacity: 1; }
             to   { opacity: 0; }
         }
+
+        /* ── Mobile layout (applied via JS when touch + narrow screen) ────── */
+        body.mobile {
+            justify-content: flex-start;
+            overflow-y: auto;
+            overflow-x: hidden;
+        }
+        body.mobile header {
+            padding: 10px 14px;
+            max-width: 100%;
+            box-sizing: border-box;
+        }
+        body.mobile .title { font-size: 15px; letter-spacing: 2px; }
+        body.mobile .stats { gap: 18px; font-size: 13px; }
+        body.mobile .stat-label { font-size: 10px; }
+        body.mobile button { padding: 8px 11px; font-size: 11px; border-width: 3px; }
+        body.mobile #sfx-btn { padding: 6px 9px; font-size: 15px; }
+
+        body.mobile .main {
+            flex-wrap: wrap;
+            gap: 8px;
+            padding: 8px;
+            max-width: 100%;
+            align-items: flex-start;
+            justify-content: flex-start;
+        }
+        body.mobile #game-container { flex-shrink: 0; }
+        body.mobile .side-panel {
+            flex: 1;
+            width: auto;
+            min-width: 0;
+            padding: 10px;
+        }
+        body.mobile .controls-panel {
+            order: 3;
+            width: 100%;
+            box-sizing: border-box;
+            flex-shrink: 0;
+            padding: 10px 8px;
+        }
+
+        /* Big touch-friendly keys filling the controls panel width */
+        body.mobile .key-row { gap: 6px; width: 100%; justify-content: center; }
+        body.mobile .key {
+            width: 28vw;
+            height: 28vw;
+            max-width: 120px;
+            max-height: 120px;
+            border-radius: 12px;
+        }
+        body.mobile .key-letter { font-size: 26px; }
+        body.mobile .key-fn { font-size: 9px; }
+
+        body.mobile .next-label { font-size: 11px; margin-bottom: 6px; }
+        body.mobile .instructions { font-size: 10px; }
+        body.mobile .instructions h3 { font-size: 12px; margin: 8px 0 8px; }
+
+        body.mobile .nybble-info-bar {
+            font-size: 11px;
+            gap: 10px;
+            padding: 6px 0 2px;
+        }
+        body.mobile .footer {
+            padding: 8px 14px;
+            font-size: 9px;
+            max-width: 100%;
+            box-sizing: border-box;
+        }
     </style>
 </head>
 <body>
@@ -405,14 +473,36 @@
     </div>
 
     <script>
-        const WIDTH = 8;
+        const WIDTH  = 8;
         const HEIGHT = 10;
-        const CELL = 64;
-        
-        const canvas = document.getElementById('board');
-        const ctx = canvas.getContext('2d');
+        let   CELL   = 64;
+
+        const canvas     = document.getElementById('board');
+        const ctx        = canvas.getContext('2d');
         const nextCanvas = document.getElementById('next-canvas');
-        const nextCtx = nextCanvas.getContext('2d');
+        const nextCtx    = nextCanvas.getContext('2d');
+
+        // ── Responsive setup ────────────────────────────────────────────────
+        // Detect mobile: touch device under 900 px wide
+        const isMobile = navigator.maxTouchPoints > 0 && window.innerWidth < 900;
+        if (isMobile) {
+            document.body.classList.add('mobile');
+
+            // Game canvas takes ~56 % of screen width; subtract 14 px for the border
+            CELL = Math.max(22, Math.floor((window.innerWidth * 0.56 - 14) / WIDTH));
+            canvas.width  = CELL * WIDTH;
+            canvas.height = CELL * HEIGHT;
+
+            // Next-nybble canvas fills the remaining side-panel width
+            const sidePanelW = window.innerWidth - canvas.width
+                               - 12        // game border (6px each side)
+                               - 12        // side panel border
+                               - 8         // gap between panels
+                               - 20;       // side panel padding (10px each side)
+            nextCanvas.width  = Math.max(90, sidePanelW);
+            nextCanvas.height = Math.round(nextCanvas.width * (120 / 260));
+        }
+        // ────────────────────────────────────────────────────────────────────
         
         let board = Array.from({ length: HEIGHT }, () => Array(WIDTH).fill(null));
         let currentPiece = null;
@@ -792,7 +882,11 @@
                 ctx.beginPath(); ctx.moveTo(0, y*CELL); ctx.lineTo(canvas.width, y*CELL); ctx.stroke();
             }
             
-            ctx.font = 'bold 44px monospace';
+            const digitPx   = Math.round(CELL * 0.6875); // 44px at CELL=64
+            const blurBoard = Math.round(CELL * 0.28);   // 18px at CELL=64
+            const blurPiece = Math.round(CELL * 0.50);   // 32px at CELL=64
+            const blurLit   = Math.round(CELL * 0.44);   // 28px at CELL=64
+            ctx.font = `bold ${digitPx}px monospace`;
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
             for (let r = 0; r < HEIGHT; r++) {
@@ -801,7 +895,7 @@
                         const lit = highlightCells && highlightCells.has(`${r},${c}`);
                         const color = lit ? (board[r][c] === '1' ? '#39ff14' : '#ff4444') : '#00ffcc';
                         ctx.shadowColor = color;
-                        ctx.shadowBlur = lit ? 28 : 18;
+                        ctx.shadowBlur = lit ? blurLit : blurBoard;
                         ctx.fillStyle = color;
                         ctx.fillText(board[r][c], c*CELL + CELL/2, r*CELL + CELL/2 + 2);
                     }
@@ -811,7 +905,7 @@
             if (currentPiece) {
                 const pos = getPiecePositions(currentPiece);
                 ctx.shadowColor = '#ffffff';
-                ctx.shadowBlur = 32;
+                ctx.shadowBlur = blurPiece;
                 ctx.fillStyle = '#ffffff';
                 for (let p of pos) {
                     if (p.r >= 0) ctx.fillText(p.d, p.c*CELL + CELL/2, p.r*CELL + CELL/2 + 2);
@@ -824,17 +918,19 @@
             nextCtx.clearRect(0, 0, nextCanvas.width, nextCanvas.height);
             if (nextNybble === null) return;
             const digits = nextNybble.toString(2).padStart(4, '0').split('');
-            nextCtx.font = 'bold 48px monospace';
+            const nFontPx  = Math.round(nextCanvas.height * 0.4);  // 48px at h=120
+            const nSpacing = Math.round(nextCanvas.width  / 5);    // 52px at w=260
+            const nBlur    = Math.round(nextCanvas.height * 0.125);// 15px at h=120
+            nextCtx.font = `bold ${nFontPx}px monospace`;
             nextCtx.textAlign    = 'center';
             nextCtx.textBaseline = 'middle';
             nextCtx.shadowColor = '#00ffcc';
-            nextCtx.shadowBlur = 15;
+            nextCtx.shadowBlur = nBlur;
             nextCtx.fillStyle = '#00ffcc';
             const cx = nextCanvas.width / 2;
             const cy = nextCanvas.height / 2;
-            const spacing = 52;
             for (let i = 0; i < 4; i++) {
-                nextCtx.fillText(digits[i], cx + (i - 1.5) * spacing, cy);
+                nextCtx.fillText(digits[i], cx + (i - 1.5) * nSpacing, cy);
             }
             nextCtx.shadowBlur = 0;
         }
