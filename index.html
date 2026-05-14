@@ -213,6 +213,50 @@
         .blink { animation: blink 1s infinite; }
         @keyframes blink { 50% { opacity: 0.3; } }
 
+        /* Mobile menu overlay */
+        .menu-overlay {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            box-sizing: border-box;
+            background: rgba(10, 10, 31, 0.97);
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 150;
+            border: 6px solid var(--accent);
+            gap: 20px;
+        }
+        .menu-overlay.open { display: flex; }
+        .menu-title {
+            font-size: 20px;
+            color: var(--accent);
+            text-shadow: 0 0 15px var(--accent);
+            letter-spacing: 3px;
+        }
+        .menu-btn-col {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            width: 85%;
+        }
+        .menu-btn-col button {
+            width: 100%;
+            padding: 20px 10px;
+            font-size: 16px;
+            text-align: center;
+        }
+
+        /* Desktop: hide MENU, show original 3 buttons */
+        #menu-btn { display: none; }
+
+        /* Mobile: show MENU, hide original 3 buttons */
+        body.mobile #menu-btn { display: inline-block; font-size: 14px; padding: 7px 10px; }
+        body.mobile #sfx-btn,
+        body.mobile #pause-btn,
+        body.mobile #restart-btn { display: none; }
+
         /* Key visualizer / touch controls */
         .key-display {
             display: flex;
@@ -387,6 +431,7 @@
             </div>
         </div>
         <div style="display: flex; gap: 15px; align-items: center;">
+            <button id="menu-btn" onclick="openMenu()">MENU</button>
             <button id="sfx-btn" title="Toggle sound">🔊</button>
             <button id="pause-btn">PAUSE</button>
             <button id="restart-btn">START</button>
@@ -403,6 +448,16 @@
                 <div id="flash-score" class="flash-score">255</div>
             </div>
             
+            <!-- Mobile menu overlay (replaces 3 header buttons on phone) -->
+            <div id="menu-overlay" class="menu-overlay">
+                <div class="menu-title">— MENU —</div>
+                <div class="menu-btn-col">
+                    <button id="menu-sfx-btn"    onclick="toggleSoundFromMenu()">🔊&nbsp; SOUND ON</button>
+                    <button id="menu-resume-btn" onclick="closeMenu()">▶&nbsp; RESUME</button>
+                    <button                       onclick="restartFromMenu()">↺&nbsp; RESTART</button>
+                </div>
+            </div>
+
             <div id="game-over" class="game-over-overlay">
                 <h1 class="blink">GAME OVER</h1>
                 <p style="margin: 10px 0 30px; font-size: 18px;">FINAL SCORE: <span id="final-score" style="color:#00ffcc;">000000</span></p>
@@ -1047,6 +1102,47 @@
             document.getElementById('status').textContent = 'GAME OVER';
         }
         
+        // ── Mobile MENU overlay ──────────────────────────────────────────────
+        function openMenu() {
+            if (gameOverFlag) return; // game-over screen takes priority
+            // Pause the game while menu is open
+            if (gameRunning && !paused) {
+                paused = true;
+                document.getElementById('status').textContent = 'PAUSED';
+            }
+            // Sync sound button label to current state
+            document.getElementById('menu-sfx-btn').textContent =
+                soundEnabled ? '🔊\u00a0 SOUND ON' : '🔇\u00a0 SOUND OFF';
+            // Hide Resume when game hasn't started yet
+            document.getElementById('menu-resume-btn').style.display =
+                gameRunning ? '' : 'none';
+            document.getElementById('menu-overlay').classList.add('open');
+        }
+
+        function closeMenu() {
+            document.getElementById('menu-overlay').classList.remove('open');
+            if (gameRunning && paused) {
+                paused = false;
+                document.getElementById('status').textContent = 'PLAYING';
+            }
+        }
+
+        function toggleSoundFromMenu() {
+            soundEnabled = !soundEnabled;
+            // Keep the main SFX button in sync
+            const sfxBtn = document.getElementById('sfx-btn');
+            sfxBtn.textContent = soundEnabled ? '🔊' : '🔇';
+            sfxBtn.classList.toggle('muted', !soundEnabled);
+            document.getElementById('menu-sfx-btn').textContent =
+                soundEnabled ? '🔊\u00a0 SOUND ON' : '🔇\u00a0 SOUND OFF';
+        }
+
+        function restartFromMenu() {
+            document.getElementById('menu-overlay').classList.remove('open');
+            startGame();
+        }
+        // ─────────────────────────────────────────────────────────────────────
+
         function pauseGame() {
             if (!gameRunning || gameOverFlag) return;
             paused = !paused;
