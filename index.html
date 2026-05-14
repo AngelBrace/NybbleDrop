@@ -1105,6 +1105,11 @@
         // ── Mobile MENU overlay ──────────────────────────────────────────────
         function openMenu() {
             if (gameOverFlag) return; // game-over screen takes priority
+            // Toggle: if already open, close it and resume
+            if (document.getElementById('menu-overlay').classList.contains('open')) {
+                closeMenu();
+                return;
+            }
             // Pause the game while menu is open
             if (gameRunning && !paused) {
                 paused = true;
