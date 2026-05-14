@@ -405,6 +405,18 @@
         /* Override inline font-size on BYTES/BITS/HIGH SCORE stat rows */
         body.mobile .side-panel > div:last-child > div { font-size: 7px !important; margin-bottom: 5px !important; }
 
+        body.mobile .byte-flash {
+            width: 90%;
+            left: 5%;
+            transform: translateY(-50%);
+        }
+        body.mobile .byte-flash .flash-label {
+            font-size: 13px;
+            white-space: normal;
+            word-break: break-word;
+        }
+        body.mobile .byte-flash .flash-score { font-size: 34px; }
+
         body.mobile .nybble-info-bar {
             font-size: 11px;
             gap: 10px;
