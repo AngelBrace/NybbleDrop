@@ -304,15 +304,17 @@
             overflow-x: hidden;
         }
         body.mobile header {
-            padding: 10px 14px;
+            padding: 8px 10px;
             max-width: 100%;
             box-sizing: border-box;
+            gap: 8px;
         }
-        body.mobile .title { font-size: 15px; letter-spacing: 2px; }
-        body.mobile .stats { gap: 18px; font-size: 13px; }
-        body.mobile .stat-label { font-size: 10px; }
-        body.mobile button { padding: 8px 11px; font-size: 11px; border-width: 3px; }
-        body.mobile #sfx-btn { padding: 6px 9px; font-size: 15px; }
+        body.mobile .title { font-size: 12px; letter-spacing: 1px; }
+        body.mobile .stats { gap: 12px; font-size: 11px; }
+        body.mobile .stat-label { font-size: 8px; }
+        /* Icon buttons: compact square with large symbol */
+        body.mobile button { padding: 7px 10px; font-size: 18px; border-width: 3px; line-height: 1; }
+        body.mobile #sfx-btn { padding: 7px 10px; font-size: 18px; }
 
         body.mobile .main {
             flex-wrap: wrap;
@@ -349,9 +351,11 @@
         body.mobile .key-letter { font-size: 26px; }
         body.mobile .key-fn { font-size: 9px; }
 
-        body.mobile .next-label { font-size: 11px; margin-bottom: 6px; }
-        body.mobile .instructions { font-size: 10px; }
-        body.mobile .instructions h3 { font-size: 12px; margin: 8px 0 8px; }
+        body.mobile .next-label { font-size: 7px; margin-bottom: 4px; }
+        body.mobile .instructions { font-size: 6px; line-height: 1.5; }
+        body.mobile .instructions h3 { font-size: 7px; margin: 6px 0 6px; }
+        /* Override inline font-size on BYTES/BITS/HIGH SCORE stat rows */
+        body.mobile .side-panel > div:last-child > div { font-size: 7px !important; margin-bottom: 5px !important; }
 
         body.mobile .nybble-info-bar {
             font-size: 11px;
@@ -489,7 +493,7 @@
             document.body.classList.add('mobile');
 
             // Game canvas takes ~56 % of screen width; subtract 14 px for the border
-            CELL = Math.max(22, Math.floor((window.innerWidth * 0.56 - 14) / WIDTH));
+            CELL = Math.max(20, Math.floor((window.innerWidth * 0.53 - 14) / WIDTH));
             canvas.width  = CELL * WIDTH;
             canvas.height = CELL * HEIGHT;
 
@@ -1020,8 +1024,8 @@
             lastDropTime = performance.now() - dropInterval;
             updateUI();
             document.getElementById('status').textContent = 'PLAYING';
-            document.getElementById('pause-btn').textContent = 'PAUSE';
-            document.getElementById('restart-btn').textContent = 'RESTART';
+            document.getElementById('pause-btn').textContent   = isMobile ? '⏸' : 'PAUSE';
+            document.getElementById('restart-btn').textContent = isMobile ? '↺' : 'RESTART';
             document.getElementById('game-over').style.display = 'none';
             flashQueue.length = 0;
             flashBusy = false;
@@ -1043,7 +1047,9 @@
         function pauseGame() {
             if (!gameRunning || gameOverFlag) return;
             paused = !paused;
-            document.getElementById('pause-btn').textContent = paused ? 'RESUME' : 'PAUSE';
+            document.getElementById('pause-btn').textContent = paused
+                ? (isMobile ? '▶' : 'RESUME')
+                : (isMobile ? '⏸' : 'PAUSE');
             document.getElementById('status').textContent = paused ? 'PAUSED' : 'PLAYING';
         }
         
@@ -1146,6 +1152,11 @@
             updateUI();
             drawBoard();
             rafId = requestAnimationFrame(gameLoop);
+            // Set icon labels on mobile for initial pre-game state
+            if (isMobile) {
+                document.getElementById('pause-btn').textContent   = '⏸';
+                document.getElementById('restart-btn').textContent = '↺';
+            }
 
             // Wire touch events after DOM is ready
             bindTouchKey('q',
