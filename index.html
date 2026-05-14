@@ -397,7 +397,8 @@
         body.mobile .key-letter { font-size: 26px; }
         body.mobile .key-fn { font-size: 9px; }
 
-        body.mobile .next-label { font-size: 7px; margin-bottom: 4px; }
+        body.mobile .next-label { font-size: 6px; margin-bottom: 2px; }
+        body.mobile #next-canvas { border-width: 2px; }
         body.mobile .instructions { font-size: 6px; line-height: 1.5; }
         body.mobile .instructions h3 { font-size: 7px; margin: 6px 0 6px; }
         body.mobile .instructions p { font-size: 4px !important; line-height: 1.6 !important; }
@@ -561,7 +562,7 @@
                                - 12        // side panel border
                                - 8         // gap between panels
                                - 20;       // side panel padding (10px each side)
-            nextCanvas.width  = Math.max(90, sidePanelW);
+            nextCanvas.width  = Math.max(60, Math.round(sidePanelW * 0.5));
             nextCanvas.height = Math.round(nextCanvas.width * (120 / 260));
         }
         // ────────────────────────────────────────────────────────────────────
