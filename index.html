@@ -253,6 +253,7 @@
 
         /* Mobile: show MENU, hide original 3 buttons */
         body.mobile #menu-btn { display: inline-block; font-size: 14px; font-weight: bold; padding: 7px 10px; }
+        body.mobile #vis-btn,
         body.mobile #sfx-btn,
         body.mobile #pause-btn,
         body.mobile #restart-btn { display: none; }
@@ -445,7 +446,8 @@
         </div>
         <div style="display: flex; gap: 15px; align-items: center;">
             <button id="menu-btn" onclick="openMenu()">MENU</button>
-            <button id="sfx-btn" title="Toggle sound">🔊</button>
+            <button id="vis-btn"  onclick="cycleVisualMode()" title="Toggle visual mode">DIGIT</button>
+            <button id="sfx-btn"  title="Toggle sound">🔊</button>
             <button id="pause-btn">PAUSE</button>
             <button id="restart-btn">START</button>
         </div>
@@ -465,6 +467,7 @@
             <div id="menu-overlay" class="menu-overlay">
                 <div class="menu-title">— MENU —</div>
                 <div class="menu-btn-col">
+                    <button id="menu-vis-btn"    onclick="cycleVisualMode()">🎨&nbsp; DIGIT</button>
                     <button id="menu-sfx-btn"    onclick="toggleSoundFromMenu()">🔊&nbsp; SOUND ON</button>
                     <button id="menu-resume-btn" onclick="closeMenu()">▶&nbsp; RESUME</button>
                     <button                       onclick="restartFromMenu()">↺&nbsp; RESTART</button>
@@ -606,6 +609,17 @@
 
         // ── Audio ────────────────────────────────────────────────────────────────
         let soundEnabled = true;
+        let visualMode = 0; // 0=DIGIT  1=BLOCK  2=LINE
+        const VIS_NAMES = ['DIGIT', 'BLOCK', 'LINE'];
+
+        function cycleVisualMode() {
+            visualMode = (visualMode + 1) % 3;
+            const name = VIS_NAMES[visualMode];
+            document.getElementById('vis-btn').textContent = name;
+            const m = document.getElementById('menu-vis-btn');
+            if (m) m.textContent = '🎨  ' + name;
+            drawBoard();
+        }
         let _audioCtx    = null;
         function audioCtx() {
             if (!_audioCtx) _audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -949,7 +963,8 @@
         
         function drawBoard() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
-            
+
+            // Grid lines
             ctx.strokeStyle = 'rgba(0, 255, 204, 0.2)';
             ctx.lineWidth = 1;
             for (let x = 0; x <= WIDTH; x++) {
@@ -958,35 +973,99 @@
             for (let y = 0; y <= HEIGHT; y++) {
                 ctx.beginPath(); ctx.moveTo(0, y*CELL); ctx.lineTo(canvas.width, y*CELL); ctx.stroke();
             }
-            
-            const digitPx   = Math.round(CELL * 0.6875); // 44px at CELL=64
-            const blurBoard = Math.round(CELL * 0.28);   // 18px at CELL=64
-            const blurPiece = Math.round(CELL * 0.50);   // 32px at CELL=64
-            const blurLit   = Math.round(CELL * 0.44);   // 28px at CELL=64
-            ctx.font = `bold ${digitPx}px monospace`;
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
+
+            const digitPx   = Math.round(CELL * 0.6875);
+            const blurBoard = Math.round(CELL * 0.28);
+            const blurPiece = Math.round(CELL * 0.50);
+            const blurLit   = Math.round(CELL * 0.44);
+
             for (let r = 0; r < HEIGHT; r++) {
                 for (let c = 0; c < WIDTH; c++) {
-                    if (board[r][c] !== null) {
-                        const lit = highlightCells && highlightCells.has(`${r},${c}`);
-                        const isOne = board[r][c] === '1';
-                        const color = lit
-                            ? (isOne ? '#FFD700' : '#ff4444')   // highlight: gold for 1s, red for 0s
-                            : '#00ffcc';                        // normal: cyan for everything
-                        ctx.shadowColor = color;
+                    if (board[r][c] === null) continue;
+                    const lit   = highlightCells && highlightCells.has(`${r},${c}`);
+                    const isOne = board[r][c] === '1';
+                    const color = lit ? (isOne ? '#FFD700' : '#ff4444') : '#00ffcc';
+                    const bx = c * CELL + 2, by = r * CELL + 2;
+                    const bw = CELL - 4,     bh = CELL - 4;
+
+                    ctx.shadowColor = color;
+
+                    if (visualMode === 0) {
+                        // ── DIGIT mode: glowing text ─────────────────────────
+                        ctx.font = `bold ${digitPx}px monospace`;
+                        ctx.textAlign = 'center';
+                        ctx.textBaseline = 'middle';
                         ctx.shadowBlur = lit ? blurLit : blurBoard;
-                        ctx.fillStyle = color;
+                        ctx.fillStyle  = color;
                         ctx.fillText(board[r][c], c*CELL + CELL/2, r*CELL + CELL/2 + 2);
+
+                    } else if (visualMode === 1) {
+                        // ── BLOCK mode: solid filled rectangles ──────────────
+                        ctx.shadowBlur = lit ? blurLit : blurBoard;
+                        if (lit) {
+                            ctx.fillStyle = isOne ? 'rgba(255,215,0,0.85)' : 'rgba(255,68,68,0.7)';
+                        } else {
+                            // 1s = 50% opacity, 0s = 20% opacity so they look different
+                            ctx.fillStyle = isOne ? 'rgba(0,255,204,0.5)' : 'rgba(0,255,204,0.18)';
+                        }
+                        ctx.fillRect(bx, by, bw, bh);
+                        ctx.shadowBlur = 0;
+                        ctx.strokeStyle = color;
+                        ctx.lineWidth = 1.5;
+                        ctx.strokeRect(bx, by, bw, bh);
+
+                    } else {
+                        // ── LINE mode: pattern-filled blocks ─────────────────
+                        ctx.save();
+                        ctx.beginPath(); ctx.rect(bx, by, bw, bh); ctx.clip();
+
+                        // Faint cell background
+                        ctx.fillStyle = lit
+                            ? (isOne ? 'rgba(255,215,0,0.10)' : 'rgba(255,68,68,0.10)')
+                            : 'rgba(0,255,204,0.05)';
+                        ctx.fillRect(bx, by, bw, bh);
+
+                        // Stripe / hatch lines
+                        ctx.strokeStyle = color;
+                        ctx.lineWidth   = 1;
+                        ctx.shadowBlur  = lit ? blurLit * 0.5 : blurBoard * 0.5;
+                        const sp = Math.max(4, Math.round(CELL / 6));
+
+                        if (isOne) {
+                            // Horizontal stripes for 1s
+                            for (let py = by + sp; py < by + bh; py += sp) {
+                                ctx.beginPath(); ctx.moveTo(bx, py); ctx.lineTo(bx + bw, py); ctx.stroke();
+                            }
+                        } else {
+                            // Diagonal hatching for 0s
+                            for (let d = -bh; d < bw + bh; d += sp) {
+                                ctx.beginPath();
+                                ctx.moveTo(bx + d, by); ctx.lineTo(bx + d + bh, by + bh);
+                                ctx.stroke();
+                            }
+                        }
+                        ctx.restore();
+
+                        // Glowing border
+                        ctx.shadowColor = color;
+                        ctx.shadowBlur  = lit ? blurLit : blurBoard;
+                        ctx.strokeStyle = color;
+                        ctx.lineWidth   = 1.5;
+                        ctx.strokeRect(bx, by, bw, bh);
+                        ctx.shadowBlur  = 0;
                     }
                 }
             }
-            
+
+            // Falling piece always renders as white digits (mode-independent)
             if (currentPiece) {
+                ctx.font = `bold ${digitPx}px monospace`;
+                ctx.textAlign    = 'center';
+                ctx.textBaseline = 'middle';
                 const pos = getPiecePositions(currentPiece);
                 ctx.shadowColor = '#ffffff';
-                ctx.shadowBlur = blurPiece;
-                ctx.fillStyle = '#ffffff';
+                ctx.shadowBlur  = blurPiece;
+                ctx.fillStyle   = '#ffffff';
                 for (let p of pos) {
                     if (p.r >= 0) ctx.fillText(p.d, p.c*CELL + CELL/2, p.r*CELL + CELL/2 + 2);
                 }
@@ -1139,8 +1218,9 @@
                 paused = true;
                 document.getElementById('status').textContent = 'PAUSED';
             }
-            // Sync sound button label to current state
-            document.getElementById('menu-sfx-btn').textContent =
+            // Sync button labels to current state
+            document.getElementById('menu-vis-btn').textContent  = '🎨\u00a0 ' + VIS_NAMES[visualMode];
+            document.getElementById('menu-sfx-btn').textContent  =
                 soundEnabled ? '🔊\u00a0 SOUND ON' : '🔇\u00a0 SOUND OFF';
             // Hide Resume when game hasn't started yet
             document.getElementById('menu-resume-btn').style.display =
