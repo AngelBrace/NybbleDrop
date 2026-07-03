@@ -694,10 +694,14 @@
             drawNextPiece();
         }
         function toggleBitMode() {
-            if (gameRunning) return; // locked during active game
             bitMode   = (bitMode === 8) ? 16 : 8;
             speedMode = (bitMode === 16) ? 2 : 1; // 16-bit defaults to 2×
             updateModeUI();
+            // If a game is in progress (running or paused), restart in the new grid size
+            if (gameRunning || (paused && !gameOverFlag)) {
+                closeMenu();
+                startGame();
+            }
         }
 
         function toggleSpeedMode() {
@@ -728,12 +732,12 @@
             bitBtn.textContent   = bitLabel;
             spdBtn.textContent   = spdLabel;
             if (modeBtn) { modeBtn.textContent = modeLabel; modeBtn.disabled = false; }
-            bitBtn.disabled      = gameRunning; // lock bit toggle mid-game
+            bitBtn.disabled      = false;
             // Mobile menu buttons
             const mb  = document.getElementById('menu-bit-btn');
             const ms  = document.getElementById('menu-speed-btn');
             const mm  = document.getElementById('menu-mode-btn');
-            if (mb) { mb.textContent = '\u26a1\u00a0 ' + bitLabel; mb.disabled = gameRunning; }
+            if (mb) { mb.textContent = '\u26a1\u00a0 ' + bitLabel; mb.disabled = false; }
             if (ms)   ms.textContent = '\ud83c\udfce\ufe0f\u00a0 ' + spdLabel;
             if (mm) { mm.textContent = '\ud83c\udfae\u00a0 ' + modeLabel; mm.disabled = false; }
             // Update instructions byte-row line
