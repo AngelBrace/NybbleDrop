@@ -31,6 +31,8 @@
             width: 100%;
             max-width: 1300px;
             padding: 14px 30px;
+            position: relative;
+            z-index: 200;
             display: flex;
             justify-content: space-between;
             align-items: center;
@@ -1653,7 +1655,7 @@
         }
 
         function restartFromMenu() {
-            document.getElementById('menu-overlay').classList.remove('open');
+            closeMenu();
             startGame();
         }
         // ─────────────────────────────────────────────────────────────────────
