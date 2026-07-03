@@ -1629,13 +1629,12 @@
             document.getElementById('menu-vis-btn').textContent  = '🎨\u00a0 ' + VIS_NAMES[visualMode];
             document.getElementById('menu-sfx-btn').textContent  =
                 soundEnabled ? '🔊\u00a0 SOUND ON' : '🔇\u00a0 SOUND OFF';
-            // Hide Resume when game hasn't started yet
-            document.getElementById('menu-resume-btn').style.display =
-                gameRunning ? '' : 'none';
             document.getElementById('menu-overlay').classList.add('open');
+            document.getElementById('menu-btn').textContent = '\u25b6 RESUME';
         }
 
         function closeMenu() {
+            document.getElementById('menu-btn').textContent = 'MENU';
             document.getElementById('menu-overlay').classList.remove('open');
             if (gameRunning && paused) {
                 paused = false;
