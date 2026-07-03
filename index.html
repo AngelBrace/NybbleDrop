@@ -407,6 +407,7 @@
             min-width: 0;
             padding: 10px;
             overflow: hidden;
+            box-sizing: border-box;
         }
         body.mobile .controls-panel {
             order: 3;
@@ -506,6 +507,7 @@
                     <button id="menu-mode-btn"   onclick="cycleGameMode()">🎮&nbsp; CLASSIC</button>
                     <button id="menu-vis-btn"    onclick="cycleVisualMode()">🎨&nbsp; BLOCK</button>
                     <button id="menu-sfx-btn"    onclick="toggleSoundFromMenu()">🔊&nbsp; SOUND ON</button>
+                    <button                       onclick="openDiag()">🔧&nbsp; LAYOUT DIAG</button>
                     <button                       onclick="restartFromMenu()">↺&nbsp; PLAY</button>
                 </div>
             </div>
@@ -516,6 +518,19 @@
                 <p id="end-detail" style="margin: 0 0 30px; font-size:14px; opacity:0.8;"></p>
                 <button onclick="restartGame()" style="font-size:20px; padding:18px 40px;">TRY AGAIN</button>
                 <p id="end-flavor" style="margin-top: 40px; font-size:12px; opacity:0.6;">The binary pile reached the top...</p>
+            </div>
+
+            <!-- Mobile layout diagnostic overlay -->
+            <div id="diag-overlay" class="menu-overlay" style="gap:6px; padding:10px 0;">
+                <div style="color:#00ffcc; font-size:11px; letter-spacing:2px;">— LAYOUT DIAG —</div>
+                <div style="font-size:9px; line-height:2; text-align:left; padding:0 12px;">
+                    WIN&nbsp;&nbsp;&nbsp;&nbsp;: <span id="diag-win"  style="color:#00ffcc;">--</span><br>
+                    CANVAS : <span id="diag-canvas" style="color:#00ffcc;">--</span><br>
+                    PANEL&nbsp;&nbsp;: <span id="diag-sp"    style="color:#ff0; font-size:11px; font-weight:bold;">--</span><br>
+                    NEXT&nbsp;&nbsp;&nbsp;: <span id="diag-next"  style="color:#00ffcc;">--</span>
+                </div>
+                <div style="font-size:8px; opacity:0.7; margin-top:4px;">A = NARROW &nbsp;|&nbsp; D = WIDEN</div>
+                <button onclick="closeDiag()" style="margin-top:8px; font-size:10px; padding:6px 18px;">✕ DONE</button>
             </div>
         </div>
 
@@ -619,7 +634,7 @@
                                - 12   // side panel border
                                - 8    // gap between panels
                                - 20;  // side panel padding (10px each side)
-            nextCanvas.width  = Math.max(60, Math.round(sidePanelW * 0.38));
+            nextCanvas.width  = Math.max(60, Math.round(sidePanelW * 0.32));
             nextCanvas.height = Math.round(nextCanvas.width * (120 / 260));
         }
 
@@ -641,6 +656,7 @@
         let dropInterval = 1000;
         let lastDropTime = 0;
         let gameRunning = false;
+        let diagMode    = false;
         let paused = false;
         let gameOverFlag = false;
         let rafId = null;
@@ -1503,7 +1519,12 @@
                                 // Board fully settled
                                 if (board.every(row => row.every(cell => cell === null))) {
                                     score += BYTE_SCORE;
-                                    queueFlash('CLEARED!');
+                                    if (gameMode === 'timed') {
+                                        timedRemaining = TIMED_MS;
+                                        queueFlash('CLEARED! +90s');
+                                    } else {
+                                        queueFlash('CLEARED!');
+                                    }
                                     updateUI();
                                 }
                                 isSettling = false;
@@ -1677,6 +1698,42 @@
             closeMenu();
             startGame();
         }
+
+        // ── Layout Diagnostic (mobile only) ──────────────────────────────────
+        function openDiag() {
+            closeMenu();
+            diagMode = true;
+            document.getElementById('diag-overlay').classList.add('open');
+            updateDiagDisplay();
+        }
+        function closeDiag() {
+            diagMode = false;
+            document.getElementById('diag-overlay').classList.remove('open');
+        }
+        function adjustDiagWidth(delta) {
+            const sp = document.querySelector('.side-panel');
+            if (!sp) return;
+            const current = parseFloat(sp.style.width) || sp.getBoundingClientRect().width;
+            const newW = Math.max(40, Math.min(Math.round(window.innerWidth * 0.75), Math.round(current + delta)));
+            sp.style.boxSizing = 'border-box';
+            sp.style.width     = newW + 'px';
+            sp.style.flex      = 'none';
+            // Recompute next-canvas to match new side panel content area
+            const contentW  = newW - 12 - 20; // 6px border × 2 + 10px padding × 2
+            const nextW     = Math.max(40, Math.round(contentW * 0.32));
+            nextCanvas.width  = nextW;
+            nextCanvas.height = Math.round(nextW * (120 / 260));
+            drawNextPiece();
+            updateDiagDisplay();
+        }
+        function updateDiagDisplay() {
+            const sp = document.querySelector('.side-panel');
+            const spW = sp ? Math.round(sp.getBoundingClientRect().width) : 0;
+            document.getElementById('diag-win').textContent    = window.innerWidth  + 'px';
+            document.getElementById('diag-canvas').textContent = canvas.width       + 'px';
+            document.getElementById('diag-sp').textContent     = spW                + 'px';
+            document.getElementById('diag-next').textContent   = nextCanvas.width   + 'px';
+        }
         // ─────────────────────────────────────────────────────────────────────
 
         function pauseGame() {
@@ -1808,12 +1865,17 @@
                 document.getElementById('restart-btn').textContent = '↺';
             }
 
-            // Lock mobile side panel to its startup rendered width
+            // Lock mobile side panel to its startup rendered width.
+            // getBoundingClientRect returns the border-box width, so we must
+            // set box-sizing:border-box before assigning it to style.width,
+            // otherwise the browser adds padding+border on top and the panel
+            // overflows its row, stacking everything vertically.
             if (isMobile) {
                 requestAnimationFrame(() => {
                     const sp = document.querySelector('.side-panel');
                     if (sp) {
                         const w = sp.getBoundingClientRect().width;
+                        sp.style.boxSizing = 'border-box';
                         sp.style.width = w + 'px';
                         sp.style.flex  = 'none';
                     }
@@ -1834,11 +1896,17 @@
                 () => { wHeld = false; }
             );
             bindTouchKey('a',
-                () => startTouchRepeat(() => { if (gameRunning && !paused && !gameOverFlag && !isSettling) { moveHorizontal(-1); drawBoard(); } }),
+                () => {
+                    if (diagMode) { startTouchRepeat(() => adjustDiagWidth(-2)); return; }
+                    startTouchRepeat(() => { if (gameRunning && !paused && !gameOverFlag && !isSettling) { moveHorizontal(-1); drawBoard(); } });
+                },
                 () => stopTouchRepeat()
             );
             bindTouchKey('d',
-                () => startTouchRepeat(() => { if (gameRunning && !paused && !gameOverFlag && !isSettling) { moveHorizontal(1); drawBoard(); } }),
+                () => {
+                    if (diagMode) { startTouchRepeat(() => adjustDiagWidth(2)); return; }
+                    startTouchRepeat(() => { if (gameRunning && !paused && !gameOverFlag && !isSettling) { moveHorizontal(1); drawBoard(); } });
+                },
                 () => stopTouchRepeat()
             );
             bindTouchKey('s',
