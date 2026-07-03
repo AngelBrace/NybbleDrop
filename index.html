@@ -279,6 +279,7 @@
         /* Mobile: show MENU, hide original 3 buttons */
         body.mobile #menu-btn { display: inline-block; font-size: 14px; font-weight: bold; padding: 7px 10px; }
         body.mobile #menu-btn.menu-open { background: var(--accent); color: #111122; box-shadow: none; }
+        #pause-btn.menu-open { background: var(--accent); color: #111122; box-shadow: none; }
         body.mobile #bit-btn,
         body.mobile #speed-btn,
         body.mobile #mode-btn,
@@ -1571,6 +1572,7 @@
             if (gameMode === 'sprint') queueFlash('CLEAR ' + SPRINT_TARGET + ' BYTES!');
             document.getElementById('status').textContent = 'PLAYING';
             document.getElementById('pause-btn').textContent   = isMobile ? '⏸' : 'PAUSE';
+            document.getElementById('pause-btn').classList.remove('menu-open');
             document.getElementById('restart-btn').textContent = isMobile ? '↺' : 'PLAY';
             document.getElementById('game-over').style.display = 'none';
             flashTimers.forEach(clearTimeout);
@@ -1673,9 +1675,7 @@
         function pauseGame() {
             if (!gameRunning || gameOverFlag) return;
             paused = !paused;
-            document.getElementById('pause-btn').textContent = paused
-                ? (isMobile ? '▶' : 'RESUME')
-                : (isMobile ? '⏸' : 'PAUSE');
+            document.getElementById('pause-btn').classList.toggle('menu-open', paused);
             document.getElementById('status').textContent = paused ? 'PAUSED' : 'PLAYING';
         }
         
