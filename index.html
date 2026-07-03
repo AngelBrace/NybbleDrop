@@ -744,7 +744,7 @@
             const byteSpan = document.getElementById('byte-line');
             if (byteSpan) {
                 byteSpan.textContent = bitMode === 16
-                    ? '1111111111111111 = 510'
+                    ? '11111111 = 255 \u00d7 2'
                     : '11111111 = 255';
             }
             // Reset level label to match current game mode
