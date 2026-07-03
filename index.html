@@ -70,6 +70,15 @@
         }
         
         #game-container { position: relative; }
+        #game-container.danger canvas {
+            border-color: #ff0066;
+            box-shadow: 0 0 30px #ff0066, inset 0 0 30px rgba(255,0,102,0.3);
+            animation: dangerPulse 0.6s ease-in-out infinite alternate;
+        }
+        @keyframes dangerPulse {
+            from { box-shadow: 0 0 20px #ff0066; }
+            to   { box-shadow: 0 0 60px #ff0066; }
+        }
         
         canvas {
             border: 6px solid var(--accent);
@@ -457,13 +466,14 @@
             </div>
             <div class="stat">
                 <span id="level" class="stat-value">01</span>
-                <span class="stat-label">LEVEL</span>
+                <span id="level-label" class="stat-label">LEVEL</span>
             </div>
         </div>
         <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
             <button id="menu-btn"   onclick="openMenu()">MENU</button>
             <button id="bit-btn"    onclick="toggleBitMode()"   class="mode-btn" title="Toggle 8-bit / 16-bit grid">8-BIT</button>
             <button id="speed-btn"  onclick="toggleSpeedMode()" class="mode-btn" title="Toggle 1× / 2× speed">1×</button>
+            <button id="mode-btn"   onclick="cycleGameMode()"   class="mode-btn" title="Toggle game mode">CLASSIC</button>
             <button id="vis-btn"    onclick="cycleVisualMode()"  title="Toggle visual mode">BLOCK</button>
             <button id="sfx-btn"    title="Toggle sound">🔊</button>
             <button id="pause-btn">PAUSE</button>
@@ -487,6 +497,7 @@
                 <div class="menu-btn-col">
                     <button id="menu-bit-btn"    onclick="toggleBitMode()">⚡&nbsp; 8-BIT</button>
                     <button id="menu-speed-btn"  onclick="toggleSpeedMode()">🏎&nbsp; 1×</button>
+                    <button id="menu-mode-btn"   onclick="cycleGameMode()">🎮&nbsp; CLASSIC</button>
                     <button id="menu-vis-btn"    onclick="cycleVisualMode()">🎨&nbsp; BLOCK</button>
                     <button id="menu-sfx-btn"    onclick="toggleSoundFromMenu()">🔊&nbsp; SOUND ON</button>
                     <button id="menu-resume-btn" onclick="closeMenu()">▶&nbsp; RESUME</button>
@@ -495,10 +506,11 @@
             </div>
 
             <div id="game-over" class="game-over-overlay">
-                <h1 class="blink">GAME OVER</h1>
-                <p style="margin: 10px 0 30px; font-size: 18px;">FINAL SCORE: <span id="final-score" style="color:#00ffcc;">000000</span></p>
+                <h1 id="end-title" class="blink">GAME OVER</h1>
+                <p style="margin: 10px 0 10px; font-size: 18px;">FINAL SCORE: <span id="final-score" style="color:#00ffcc;">000000</span></p>
+                <p id="end-detail" style="margin: 0 0 30px; font-size:14px; opacity:0.8;"></p>
                 <button onclick="restartGame()" style="font-size:20px; padding:18px 40px;">TRY AGAIN</button>
-                <p style="margin-top: 40px; font-size:12px; opacity:0.6;">The binary pile reached the top...</p>
+                <p id="end-flavor" style="margin-top: 40px; font-size:12px; opacity:0.6;">The binary pile reached the top...</p>
             </div>
         </div>
 
@@ -630,6 +642,18 @@
         let highlightTimer  = 0;
         let highlightDone   = false; // true after flash shown; skips re-highlight until next gravity cycle
         const HIGHLIGHT_MS  = 450;
+        let chainCount = 0;      // consecutive cancellations in one settle cycle
+        let garbageRowCount = 4; // rows of garbage placed at game start; grows over time
+
+        // ── Game modes ───────────────────────────────────────────────────────────
+        let gameMode    = 'classic'; // 'classic' | 'timed' | 'sprint'
+        const MODE_NAMES = ['CLASSIC', 'TIMED', 'SPRINT'];
+        const TIMED_MS   = 90000;  // 90 seconds
+        const SPRINT_TARGET = 10;  // byte-clears to win sprint
+        let timedRemaining  = TIMED_MS;
+        let timedLastTick   = 0;
+        let sprintStartTime = 0;
+        let sprintBestMs    = Number(localStorage.getItem('nybbleSprintBest')) || Infinity;
 
         // ── Audio ────────────────────────────────────────────────────────────────
         let soundEnabled = true;
@@ -677,26 +701,43 @@
             updateModeUI();
         }
 
+        function cycleGameMode() {
+            if (gameRunning) return; // lock during play
+            const idx = ['classic', 'timed', 'sprint'].indexOf(gameMode);
+            gameMode = ['classic', 'timed', 'sprint'][(idx + 1) % 3];
+            updateModeUI();
+        }
+
         function updateModeUI() {
-            const bitLabel = bitMode + '-BIT';
-            const spdLabel = speedMode + '\u00d7';
+            const bitLabel  = bitMode + '-BIT';
+            const spdLabel  = speedMode + '\u00d7';
+            const modeLabel = gameMode.toUpperCase();
             // Desktop header buttons
             const bitBtn   = document.getElementById('bit-btn');
             const spdBtn   = document.getElementById('speed-btn');
+            const modeBtn  = document.getElementById('mode-btn');
             bitBtn.textContent   = bitLabel;
             spdBtn.textContent   = spdLabel;
+            if (modeBtn) { modeBtn.textContent = modeLabel; modeBtn.disabled = gameRunning; }
             bitBtn.disabled      = gameRunning; // lock bit toggle mid-game
             // Mobile menu buttons
-            const mb = document.getElementById('menu-bit-btn');
-            const ms = document.getElementById('menu-speed-btn');
+            const mb  = document.getElementById('menu-bit-btn');
+            const ms  = document.getElementById('menu-speed-btn');
+            const mm  = document.getElementById('menu-mode-btn');
             if (mb) { mb.textContent = '\u26a1\u00a0 ' + bitLabel; mb.disabled = gameRunning; }
             if (ms)   ms.textContent = '\ud83c\udfce\ufe0f\u00a0 ' + spdLabel;
+            if (mm) { mm.textContent = '\ud83c\udfae\u00a0 ' + modeLabel; mm.disabled = gameRunning; }
             // Update instructions byte-row line
             const byteSpan = document.getElementById('byte-line');
             if (byteSpan) {
                 byteSpan.textContent = bitMode === 16
                     ? '1111111111111111 = 510'
                     : '11111111 = 255';
+            }
+            // Reset level label to match current game mode
+            const levelLabelEl = document.getElementById('level-label');
+            if (levelLabelEl) {
+                levelLabelEl.textContent = gameMode === 'timed' ? 'TIME' : gameMode === 'sprint' ? 'BYTES' : 'LEVEL';
             }
         }
 
@@ -760,6 +801,19 @@
             return positions;
         }
         
+        function getGhostPositions() {
+            if (!currentPiece) return [];
+            let ghost = { ...currentPiece, digits: [...currentPiece.digits] };
+            while (true) {
+                const next = { ...ghost, y: ghost.y + 1 };
+                if (isValid(next)) { ghost = next; } else { break; }
+            }
+            // Only show ghost if it's below the current piece position
+            const liveY = currentPiece.y;
+            if (ghost.y === liveY) return [];
+            return getPiecePositions(ghost);
+        }
+
         function isValid(piece) {
             const positions = getPiecePositions(piece);
             for (let p of positions) {
@@ -958,12 +1012,19 @@
                 }
             }
 
-            // Apply scores and award bytes
-            if (cancelScore > 0) score += cancelScore * level;
+            // Apply scores and award bytes (chain multiplier on 2nd+ resolve)
+            if (cancelScore > 0) score += cancelScore * level * Math.max(1, chainCount);
             for (let i = 0; i < bytesFound; i++) {
                 score += BYTE_SCORE;
                 byteClears++;
                 queueFlash('FULL BYTE SCORE!');
+                // Sprint mode win check
+                if (gameMode === 'sprint' && byteClears >= SPRINT_TARGET) {
+                    updateUI();
+                    drawBoard();
+                    endGame('sprint-win');
+                    return;
+                }
             }
 
             // Remove all doomed cells
@@ -1019,6 +1080,7 @@
         }
         
         function spawnNewPiece() {
+            chainCount = 0; // reset chain when new piece spawns
             currentPiece = new Piece();
             nextNybble = Math.floor(Math.random() * 16);
             
@@ -1034,6 +1096,27 @@
             lastDropTime = performance.now() - dropInterval;
         }
         
+        function spawnGarbageBed(rows) {
+            for (let r = HEIGHT - rows; r < HEIGHT; r++) {
+                for (let c = 0; c < WIDTH; c++) {
+                    board[r][c] = Math.random() < 0.5 ? '1' : '0';
+                }
+            }
+        }
+
+        function insertGarbageWave(rows) {
+            // Push existing board content up by `rows` (top rows are lost)
+            for (let r = 0; r < HEIGHT - rows; r++) {
+                board[r] = board[r + rows].slice();
+            }
+            // Fill vacated bottom rows with fresh garbage
+            for (let r = HEIGHT - rows; r < HEIGHT; r++) {
+                for (let c = 0; c < WIDTH; c++) {
+                    board[r][c] = Math.random() < 0.5 ? '1' : '0';
+                }
+            }
+        }
+
         function updateNybbleInfo(nybble) {
             if (nybble === null || nybble === undefined) return;
             document.getElementById('nybble-bin').textContent =
@@ -1162,6 +1245,35 @@
                 }
             }
 
+            // ── Ghost piece (drop preview) ──────────────────────────────────────
+            if (currentPiece) {
+                const ghost = getGhostPositions();
+                if (visualMode === 0) {
+                    ctx.font = `bold ${digitPx}px monospace`;
+                    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+                    ctx.shadowBlur = 0; ctx.globalAlpha = 0.18;
+                    ctx.fillStyle = '#00ffcc';
+                    for (const p of ghost) {
+                        if (p.r >= 0) ctx.fillText(p.d, p.c*CELL + CELL/2, p.r*CELL + CELL/2 + 2);
+                    }
+                    ctx.globalAlpha = 1;
+                } else {
+                    for (const p of ghost) {
+                        if (p.r < 0) continue;
+                        const gbx = p.c*CELL + 2, gby = p.r*CELL + 2;
+                        const gbw = CELL - 4,      gbh = CELL - 4;
+                        const isOne = p.d === '1';
+                        ctx.globalAlpha = 0.22;
+                        ctx.shadowBlur  = 0;
+                        ctx.strokeStyle = isOne ? '#2878ff' : '#9696a5';
+                        ctx.lineWidth   = 1.5;
+                        drawRRect(ctx, gbx, gby, gbw, gbh, radius);
+                        ctx.stroke();
+                        ctx.globalAlpha = 1;
+                    }
+                }
+            }
+
             // ── Falling piece ───────────────────────────────────────────────────
             if (currentPiece) {
                 const pos = getPiecePositions(currentPiece);
@@ -1266,15 +1378,44 @@
         function updateUI() {
             document.getElementById('score').textContent = String(Math.floor(score)).padStart(6, '0');
             document.getElementById('bits').textContent = String(bits).padStart(3, '0');
-            document.getElementById('level').textContent = String(level).padStart(2, '0');
             document.getElementById('byte-clears').textContent = String(byteClears).padStart(3, '0');
             document.getElementById('high-score').textContent = String(highScore).padStart(6, '0');
+            // Second stat: LEVEL for classic, time-remaining for timed, bytes/target for sprint
+            const levelEl    = document.getElementById('level');
+            const levelLabel = document.querySelector('#level + .stat-label') || document.querySelector('.stat-label[for="level"]');
+            const statLabelEl = document.getElementById('level-label');
+            if (gameMode === 'timed') {
+                const secLeft = Math.max(0, Math.ceil(timedRemaining / 1000));
+                const m = Math.floor(secLeft / 60), s = secLeft % 60;
+                levelEl.textContent = m + ':' + String(s).padStart(2, '0');
+                if (statLabelEl) statLabelEl.textContent = 'TIME';
+            } else if (gameMode === 'sprint') {
+                levelEl.textContent = String(byteClears).padStart(2, '0') + '/' + String(SPRINT_TARGET).padStart(2, '0');
+                if (statLabelEl) statLabelEl.textContent = 'BYTES';
+            } else {
+                levelEl.textContent = String(level).padStart(2, '0');
+                if (statLabelEl) statLabelEl.textContent = 'LEVEL';
+            }
         }
         
         function gameLoop(timestamp) {
             if (!gameRunning || paused || gameOverFlag) {
                 rafId = requestAnimationFrame(gameLoop);
                 return;
+            }
+
+            // ── Game-mode countdown / win checks ────────────────────────────────
+            if (gameMode === 'timed') {
+                const now = performance.now();
+                timedRemaining -= (now - timedLastTick);
+                timedLastTick = now;
+                if (timedRemaining <= 0) {
+                    timedRemaining = 0;
+                    drawBoard();
+                    updateUI();
+                    endGame('timed-end');
+                    return;
+                }
             }
             
             if (isSettling) {
@@ -1302,13 +1443,23 @@
                             if (has0s) snd0s();
                         } else {
                             highlightDone = false;
+                            chainCount++; // count this resolve pass for chain multiplier
                             const { totalRemoved, onesCount } = resolveAllDoomed();
                             if (totalRemoved > 0) {
+                                if (chainCount >= 2) queueFlash('CHAIN \u00d7' + chainCount + '!');
                                 const prevLevel5 = Math.floor(bits / 5);
                                 bits += onesCount;
                                 const newLevel5 = Math.floor(bits / 5);
                                 if (newLevel5 > prevLevel5 && level < 20) {
+                                    const oldLevel = level;
                                     level = Math.min(level + 1, 20);
+                                    // Every 10 levels, inject a garbage wave
+                                    if (oldLevel % 10 !== 0 && level % 10 === 0) {
+                                        const waveRows = Math.min(2 + Math.floor(level / 10), 4);
+                                        insertGarbageWave(waveRows);
+                                        queueFlash('GARBAGE WAVE!');
+                                        isSettling = true;
+                                    }
                                 }
                                 // 1024-bit milestone bonus
                                 while (bits >= bitsNextMilestone) {
@@ -1341,6 +1492,14 @@
             }
             
             drawBoard();
+
+            // ── Danger zone ─────────────────────────────────────────────────────
+            const inDanger = board.slice(0, Math.floor(HEIGHT / 4)).some(row => row.some(c => c !== null));
+            document.getElementById('game-container').classList.toggle('danger', inDanger);
+
+            // Keep timed/sprint UI counters current every frame
+            if (gameMode !== 'classic') updateUI();
+
             rafId = requestAnimationFrame(gameLoop);
         }
         
@@ -1367,10 +1526,21 @@
             score = 0; bits = 0; bitsNextMilestone = 1024; byteClears = 0; level = 1;
             dropInterval = (speedMode === 2) ? 500 : 1000;
             gameOverFlag = false; paused = false; gameRunning = true; isSettling = false; wHeld = false; sHeld = false; sHeldStart = 0; highlightCells = null; highlightDone = false;
+            chainCount = 0;
+            garbageRowCount = 4;
+            document.getElementById('game-container').classList.remove('danger');
+            // Mode-specific init
+            timedRemaining  = TIMED_MS;
+            timedLastTick   = performance.now();
+            sprintStartTime = performance.now();
             
-            nextNybble = Math.floor(Math.random() * 16);
-            spawnNewPiece();
-            lastDropTime = performance.now() - dropInterval;
+            // Spawn the initial garbage bed; settling loop will call spawnNewPiece() when done
+            nextNybble = Math.floor(Math.random() * 16); // will become first real piece
+            currentPiece = null;
+            spawnGarbageBed(garbageRowCount);
+            isSettling = true;
+            gravityTimer = performance.now();
+            drawNextPiece(); // preview first piece while garbage settles
             updateUI();
             document.getElementById('status').textContent = 'PLAYING';
             document.getElementById('pause-btn').textContent   = isMobile ? '⏸' : 'PAUSE';
@@ -1385,15 +1555,45 @@
             updateModeUI();
         }
         
-        function endGame() {
+        function endGame(reason) {
             gameRunning = false; gameOverFlag = true;
+            document.getElementById('game-container').classList.remove('danger');
             if (score > highScore) {
                 highScore = score;
                 localStorage.setItem('nybbleHighScore', highScore);
             }
             document.getElementById('final-score').textContent = String(Math.floor(score)).padStart(6, '0');
             document.getElementById('game-over').style.display = 'flex';
-            document.getElementById('status').textContent = 'GAME OVER';
+
+            // Mode-specific overlay text
+            const titleEl  = document.getElementById('end-title');
+            const detailEl = document.getElementById('end-detail');
+            const flavorEl = document.getElementById('end-flavor');
+            if (gameMode === 'sprint' && reason === 'sprint-win') {
+                const elapsed = performance.now() - sprintStartTime;
+                const elapsedSec = (elapsed / 1000).toFixed(2);
+                titleEl.textContent  = 'COMPLETE!';
+                detailEl.textContent = `${SPRINT_TARGET} bytes in ${elapsedSec}s`;
+                if (elapsed < sprintBestMs) {
+                    sprintBestMs = elapsed;
+                    localStorage.setItem('nybbleSprintBest', sprintBestMs);
+                    detailEl.textContent += ' — NEW BEST!';
+                }
+                flavorEl.textContent = sprintBestMs < Infinity
+                    ? `Best: ${(sprintBestMs / 1000).toFixed(2)}s`
+                    : '';
+                document.getElementById('status').textContent = 'SPRINT WIN!';
+            } else if (gameMode === 'timed') {
+                titleEl.textContent  = 'TIME UP!';
+                detailEl.textContent = `Cleared ${byteClears} byte${byteClears !== 1 ? 's' : ''} in 90s`;
+                flavorEl.textContent = 'Can you beat your score?';
+                document.getElementById('status').textContent = 'TIME UP';
+            } else {
+                titleEl.textContent  = 'GAME OVER';
+                detailEl.textContent = '';
+                flavorEl.textContent = 'The binary pile reached the top...';
+                document.getElementById('status').textContent = 'GAME OVER';
+            }
             updateModeUI(); // re-enable bit-mode toggle after game ends
         }
         
