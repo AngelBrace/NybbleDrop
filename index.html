@@ -604,22 +604,24 @@
         // ── Responsive setup ────────────────────────────────────────────────
         // Detect mobile: touch device under 900 px wide
         const isMobile = navigator.maxTouchPoints > 0 && window.innerWidth < 900;
-        if (isMobile) {
-            document.body.classList.add('mobile');
 
-            // Game canvas takes ~56 % of screen width; subtract 14 px for the border
+        // Shared mobile canvas sizing — called at startup and in startGame()
+        function applyMobileCanvasSize() {
             CELL = Math.max(20, Math.floor((window.innerWidth * 0.53 - 14) / WIDTH));
             canvas.width  = CELL * WIDTH;
             canvas.height = CELL * HEIGHT;
-
-            // Next-nybble canvas fills the remaining side-panel width
             const sidePanelW = window.innerWidth - canvas.width
-                               - 12        // game border (6px each side)
-                               - 12        // side panel border
-                               - 8         // gap between panels
-                               - 20;       // side panel padding (10px each side)
+                               - 12   // game border (6px each side)
+                               - 12   // side panel border
+                               - 8    // gap between panels
+                               - 20;  // side panel padding (10px each side)
             nextCanvas.width  = Math.max(60, Math.round(sidePanelW * 0.38));
             nextCanvas.height = Math.round(nextCanvas.width * (120 / 260));
+        }
+
+        if (isMobile) {
+            document.body.classList.add('mobile');
+            applyMobileCanvasSize();
         }
         // ────────────────────────────────────────────────────────────────────
         
@@ -1535,11 +1537,7 @@
             BYTE_SCORE = (bitMode === 16) ? 510 : 255;
 
             if (isMobile) {
-                CELL = Math.max(16, Math.floor((window.innerWidth * 0.53 - 14) / WIDTH));
-                const sidePanelW = window.innerWidth - (CELL * WIDTH)
-                                   - 12 - 12 - 8 - 20;
-                nextCanvas.width  = Math.max(60, Math.round(sidePanelW * 0.38));
-                nextCanvas.height = Math.round(nextCanvas.width * (120 / 260));
+                applyMobileCanvasSize(); // same formula as startup — no size drift
             } else {
                 CELL = (bitMode === 16) ? 32 : 64;
             }
