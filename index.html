@@ -1542,6 +1542,9 @@
             gravityTimer = performance.now();
             drawNextPiece(); // preview first piece while garbage settles
             updateUI();
+            // Mode objective reminder
+            if (gameMode === 'timed')  queueFlash('90 SECONDS!');
+            if (gameMode === 'sprint') queueFlash('CLEAR ' + SPRINT_TARGET + ' BYTES!');
             document.getElementById('status').textContent = 'PLAYING';
             document.getElementById('pause-btn').textContent   = isMobile ? '⏸' : 'PAUSE';
             document.getElementById('restart-btn').textContent = isMobile ? '↺' : 'RESTART';
