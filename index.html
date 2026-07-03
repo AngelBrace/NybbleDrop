@@ -482,7 +482,7 @@
             <button id="vis-btn"    onclick="cycleVisualMode()"  class="mode-btn" title="Toggle visual mode">BLOCK</button>
             <button id="sfx-btn"    class="mode-btn" title="Toggle sound">🔊</button>
             <button id="pause-btn"  class="mode-btn">PAUSE</button>
-            <button id="restart-btn" class="mode-btn">START</button>
+            <button id="restart-btn" class="mode-btn">PLAY</button>
         </div>
     </header>
 
@@ -1560,7 +1560,7 @@
             if (gameMode === 'sprint') queueFlash('CLEAR ' + SPRINT_TARGET + ' BYTES!');
             document.getElementById('status').textContent = 'PLAYING';
             document.getElementById('pause-btn').textContent   = isMobile ? '⏸' : 'PAUSE';
-            document.getElementById('restart-btn').textContent = isMobile ? '↺' : 'RESTART';
+            document.getElementById('restart-btn').textContent = isMobile ? '↺' : 'PLAY';
             document.getElementById('game-over').style.display = 'none';
             flashTimers.forEach(clearTimeout);
             flashTimers = [];
