@@ -1262,7 +1262,7 @@
                 if (visualMode === 0) {
                     ctx.font = `bold ${digitPx}px monospace`;
                     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-                    ctx.shadowBlur = 0; ctx.globalAlpha = 0.18;
+                    ctx.shadowBlur = 0; ctx.globalAlpha = 0.28;
                     ctx.fillStyle = '#00ffcc';
                     for (const p of ghost) {
                         if (p.r >= 0) ctx.fillText(p.d, p.c*CELL + CELL/2, p.r*CELL + CELL/2 + 2);
@@ -1274,7 +1274,13 @@
                         const gbx = p.c*CELL + 2, gby = p.r*CELL + 2;
                         const gbw = CELL - 4,      gbh = CELL - 4;
                         const isOne = p.d === '1';
-                        ctx.globalAlpha = 0.22;
+                        // Semi-transparent fill for a ghostly appearance
+                        ctx.globalAlpha = 0.18;
+                        ctx.fillStyle   = isOne ? 'rgba(40,120,255,1)' : 'rgba(150,150,165,1)';
+                        drawRRect(ctx, gbx, gby, gbw, gbh, radius);
+                        ctx.fill();
+                        // Slightly brighter outline on top
+                        ctx.globalAlpha = 0.35;
                         ctx.shadowBlur  = 0;
                         ctx.strokeStyle = isOne ? '#2878ff' : '#9696a5';
                         ctx.lineWidth   = 1.5;
