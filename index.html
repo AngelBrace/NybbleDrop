@@ -702,10 +702,14 @@
         }
 
         function cycleGameMode() {
-            if (gameRunning) return; // lock during play
             const idx = ['classic', 'timed', 'sprint'].indexOf(gameMode);
             gameMode = ['classic', 'timed', 'sprint'][(idx + 1) % 3];
             updateModeUI();
+            // If a game is in progress (running or paused), restart immediately in the new mode
+            if (gameRunning || (gameOverFlag === false && paused)) {
+                closeMenu(); // close mobile overlay if open
+                startGame();
+            }
         }
 
         function updateModeUI() {
@@ -718,7 +722,7 @@
             const modeBtn  = document.getElementById('mode-btn');
             bitBtn.textContent   = bitLabel;
             spdBtn.textContent   = spdLabel;
-            if (modeBtn) { modeBtn.textContent = modeLabel; modeBtn.disabled = gameRunning; }
+            if (modeBtn) { modeBtn.textContent = modeLabel; modeBtn.disabled = false; }
             bitBtn.disabled      = gameRunning; // lock bit toggle mid-game
             // Mobile menu buttons
             const mb  = document.getElementById('menu-bit-btn');
@@ -726,7 +730,7 @@
             const mm  = document.getElementById('menu-mode-btn');
             if (mb) { mb.textContent = '\u26a1\u00a0 ' + bitLabel; mb.disabled = gameRunning; }
             if (ms)   ms.textContent = '\ud83c\udfce\ufe0f\u00a0 ' + spdLabel;
-            if (mm) { mm.textContent = '\ud83c\udfae\u00a0 ' + modeLabel; mm.disabled = gameRunning; }
+            if (mm) { mm.textContent = '\ud83c\udfae\u00a0 ' + modeLabel; mm.disabled = false; }
             // Update instructions byte-row line
             const byteSpan = document.getElementById('byte-line');
             if (byteSpan) {
