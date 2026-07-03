@@ -406,6 +406,7 @@
             width: auto;
             min-width: 0;
             padding: 10px;
+            overflow: hidden;
         }
         body.mobile .controls-panel {
             order: 3;
@@ -432,7 +433,7 @@
         body.mobile #next-canvas { border-width: 4px; }
         body.mobile .instructions { font-size: 8px; line-height: 1.5; }
         body.mobile .instructions h3 { font-size: 9px; margin: 6px 0 6px; }
-        body.mobile .instructions p { font-size: 6px !important; line-height: 1.8 !important; }
+        body.mobile .instructions p { font-size: 6px !important; line-height: 1.8 !important; overflow: hidden; word-break: break-word; }
         /* Override inline font-size on BYTES/BITS/HIGH SCORE stat rows */
         body.mobile .side-panel > div:last-child > div { font-size: 7px !important; margin-bottom: 5px !important; }
 
@@ -1805,6 +1806,18 @@
             if (isMobile) {
                 document.getElementById('pause-btn').textContent   = '⏸';
                 document.getElementById('restart-btn').textContent = '↺';
+            }
+
+            // Lock mobile side panel to its startup rendered width
+            if (isMobile) {
+                requestAnimationFrame(() => {
+                    const sp = document.querySelector('.side-panel');
+                    if (sp) {
+                        const w = sp.getBoundingClientRect().width;
+                        sp.style.width = w + 'px';
+                        sp.style.flex  = 'none';
+                    }
+                });
             }
 
             // Wire touch events after DOM is ready
