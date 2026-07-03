@@ -30,7 +30,7 @@
         header {
             width: 100%;
             max-width: 1300px;
-            padding: 20px 40px;
+            padding: 14px 30px;
             display: flex;
             justify-content: space-between;
             align-items: center;
@@ -474,15 +474,15 @@
                 <span id="level-label" class="stat-label">LEVEL</span>
             </div>
         </div>
-        <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+        <div id="header-btns" style="display: flex; gap: 8px; align-items: center; flex-wrap: nowrap; margin-left: 20px;">
             <button id="menu-btn"   onclick="openMenu()">MENU</button>
             <button id="bit-btn"    onclick="toggleBitMode()"   class="mode-btn" title="Toggle 8-bit / 16-bit grid">8-BIT</button>
             <button id="speed-btn"  onclick="toggleSpeedMode()" class="mode-btn" title="Toggle 1× / 2× speed">1×</button>
             <button id="mode-btn"   onclick="cycleGameMode()"   class="mode-btn" title="Toggle game mode">CLASSIC</button>
-            <button id="vis-btn"    onclick="cycleVisualMode()"  title="Toggle visual mode">BLOCK</button>
-            <button id="sfx-btn"    title="Toggle sound">🔊</button>
-            <button id="pause-btn">PAUSE</button>
-            <button id="restart-btn">START</button>
+            <button id="vis-btn"    onclick="cycleVisualMode()"  class="mode-btn" title="Toggle visual mode">BLOCK</button>
+            <button id="sfx-btn"    class="mode-btn" title="Toggle sound">🔊</button>
+            <button id="pause-btn"  class="mode-btn">PAUSE</button>
+            <button id="restart-btn" class="mode-btn">START</button>
         </div>
     </header>
 
