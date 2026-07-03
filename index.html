@@ -179,6 +179,17 @@
             transform: scale(1.05);
         }
 
+        .mode-btn {
+            padding: 10px 14px;
+            font-size: 12px;
+        }
+        .mode-btn:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
         #sfx-btn {
             padding: 10px 16px;
             font-size: 22px;
@@ -256,6 +267,8 @@
 
         /* Mobile: show MENU, hide original 3 buttons */
         body.mobile #menu-btn { display: inline-block; font-size: 14px; font-weight: bold; padding: 7px 10px; }
+        body.mobile #bit-btn,
+        body.mobile #speed-btn,
         body.mobile #vis-btn,
         body.mobile #sfx-btn,
         body.mobile #pause-btn,
@@ -447,10 +460,12 @@
                 <span class="stat-label">LEVEL</span>
             </div>
         </div>
-        <div style="display: flex; gap: 15px; align-items: center;">
-            <button id="menu-btn" onclick="openMenu()">MENU</button>
-            <button id="vis-btn"  onclick="cycleVisualMode()" title="Toggle visual mode">BLOCK</button>
-            <button id="sfx-btn"  title="Toggle sound">🔊</button>
+        <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+            <button id="menu-btn"   onclick="openMenu()">MENU</button>
+            <button id="bit-btn"    onclick="toggleBitMode()"   class="mode-btn" title="Toggle 8-bit / 16-bit grid">8-BIT</button>
+            <button id="speed-btn"  onclick="toggleSpeedMode()" class="mode-btn" title="Toggle 1× / 2× speed">1×</button>
+            <button id="vis-btn"    onclick="cycleVisualMode()"  title="Toggle visual mode">BLOCK</button>
+            <button id="sfx-btn"    title="Toggle sound">🔊</button>
             <button id="pause-btn">PAUSE</button>
             <button id="restart-btn">START</button>
         </div>
@@ -470,6 +485,8 @@
             <div id="menu-overlay" class="menu-overlay">
                 <div class="menu-title">— MENU —</div>
                 <div class="menu-btn-col">
+                    <button id="menu-bit-btn"    onclick="toggleBitMode()">⚡&nbsp; 8-BIT</button>
+                    <button id="menu-speed-btn"  onclick="toggleSpeedMode()">🏎&nbsp; 1×</button>
                     <button id="menu-vis-btn"    onclick="cycleVisualMode()">🎨&nbsp; BLOCK</button>
                     <button id="menu-sfx-btn"    onclick="toggleSoundFromMenu()">🔊&nbsp; SOUND ON</button>
                     <button id="menu-resume-btn" onclick="closeMenu()">▶&nbsp; RESUME</button>
@@ -501,7 +518,7 @@
                     1111 = 15<br>
                     11111 = 31<br>
                     111111 = 63<br>
-                    11111111 = 255
+                    <span id="byte-line">11111111 = 255</span>
                 </p>
             </div>
 
@@ -554,9 +571,13 @@
     </div>
 
     <script>
-        const WIDTH  = 8;
-        const HEIGHT = 10;
-        let   CELL   = 64;
+        let WIDTH  = 8;
+        let HEIGHT = 10;
+        let CELL   = 64;
+
+        let bitMode    = 8;   // 8 or 16
+        let speedMode  = 1;   // 1 or 2
+        let BYTE_SCORE = 255; // recalculated at game start
 
         const canvas     = document.getElementById('board');
         const ctx        = canvas.getContext('2d');
@@ -643,6 +664,42 @@
             drawBoard();
             drawNextPiece();
         }
+        function toggleBitMode() {
+            if (gameRunning) return; // locked during active game
+            bitMode   = (bitMode === 8) ? 16 : 8;
+            speedMode = (bitMode === 16) ? 2 : 1; // 16-bit defaults to 2×
+            updateModeUI();
+        }
+
+        function toggleSpeedMode() {
+            speedMode = (speedMode === 1) ? 2 : 1;
+            if (gameRunning) dropInterval = (speedMode === 2) ? 500 : 1000;
+            updateModeUI();
+        }
+
+        function updateModeUI() {
+            const bitLabel = bitMode + '-BIT';
+            const spdLabel = speedMode + '\u00d7';
+            // Desktop header buttons
+            const bitBtn   = document.getElementById('bit-btn');
+            const spdBtn   = document.getElementById('speed-btn');
+            bitBtn.textContent   = bitLabel;
+            spdBtn.textContent   = spdLabel;
+            bitBtn.disabled      = gameRunning; // lock bit toggle mid-game
+            // Mobile menu buttons
+            const mb = document.getElementById('menu-bit-btn');
+            const ms = document.getElementById('menu-speed-btn');
+            if (mb) { mb.textContent = '\u26a1\u00a0 ' + bitLabel; mb.disabled = gameRunning; }
+            if (ms)   ms.textContent = '\ud83c\udfce\ufe0f\u00a0 ' + spdLabel;
+            // Update instructions byte-row line
+            const byteSpan = document.getElementById('byte-line');
+            if (byteSpan) {
+                byteSpan.textContent = bitMode === 16
+                    ? '1111111111111111 = 510'
+                    : '11111111 = 255';
+            }
+        }
+
         let _audioCtx    = null;
         function audioCtx() {
             if (!_audioCtx) _audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -904,7 +961,7 @@
             // Apply scores and award bytes
             if (cancelScore > 0) score += cancelScore * level;
             for (let i = 0; i < bytesFound; i++) {
-                score += 255;
+                score += BYTE_SCORE;
                 byteClears++;
                 queueFlash('FULL BYTE SCORE!');
             }
@@ -940,6 +997,7 @@
             const scoreEl = document.getElementById('flash-score');
 
             label.textContent = labelText;
+            scoreEl.textContent = BYTE_SCORE;
             el.style.animation = '';
             el.style.opacity   = '1';
             el.style.display   = 'block';
@@ -1263,7 +1321,7 @@
                             } else {
                                 // Board fully settled
                                 if (board.every(row => row.every(cell => cell === null))) {
-                                    score += 255;
+                                    score += BYTE_SCORE;
                                     queueFlash('CLEARED!');
                                     updateUI();
                                 }
@@ -1287,8 +1345,27 @@
         }
         
         function startGame() {
+            // ── Apply mode settings ──────────────────────────────────────────
+            WIDTH      = (bitMode === 16) ? 16 : 8;
+            HEIGHT     = (bitMode === 16) ? 20 : 10;
+            BYTE_SCORE = (bitMode === 16) ? 510 : 255;
+
+            if (isMobile) {
+                CELL = Math.max(16, Math.floor((window.innerWidth * 0.53 - 14) / WIDTH));
+                const sidePanelW = window.innerWidth - (CELL * WIDTH)
+                                   - 12 - 12 - 8 - 20;
+                nextCanvas.width  = Math.max(60, Math.round(sidePanelW * 0.38));
+                nextCanvas.height = Math.round(nextCanvas.width * (120 / 260));
+            } else {
+                CELL = (bitMode === 16) ? 32 : 64;
+            }
+            canvas.width  = CELL * WIDTH;
+            canvas.height = CELL * HEIGHT;
+            // ────────────────────────────────────────────────────────────────
+
             board = Array.from({ length: HEIGHT }, () => Array(WIDTH).fill(null));
-            score = 0; bits = 0; bitsNextMilestone = 1024; byteClears = 0; level = 1; dropInterval = 1000;
+            score = 0; bits = 0; bitsNextMilestone = 1024; byteClears = 0; level = 1;
+            dropInterval = (speedMode === 2) ? 500 : 1000;
             gameOverFlag = false; paused = false; gameRunning = true; isSettling = false; wHeld = false; sHeld = false; sHeldStart = 0; highlightCells = null; highlightDone = false;
             
             nextNybble = Math.floor(Math.random() * 16);
@@ -1305,6 +1382,7 @@
             flashBusy = false;
             document.getElementById('byte-flash').style.display = 'none';
             ['q','w','e','a','s','d'].forEach(k => setKeyLight(k, false));
+            updateModeUI();
         }
         
         function endGame() {
@@ -1316,6 +1394,7 @@
             document.getElementById('final-score').textContent = String(Math.floor(score)).padStart(6, '0');
             document.getElementById('game-over').style.display = 'flex';
             document.getElementById('status').textContent = 'GAME OVER';
+            updateModeUI(); // re-enable bit-mode toggle after game ends
         }
         
         // ── Mobile MENU overlay ──────────────────────────────────────────────
@@ -1487,6 +1566,7 @@
         window.onload = () => {
             highScore = Number(localStorage.getItem('nybbleHighScore')) || 0;
             updateUI();
+            updateModeUI();
             drawBoard();
             rafId = requestAnimationFrame(gameLoop);
             // Set icon labels on mobile for initial pre-game state
