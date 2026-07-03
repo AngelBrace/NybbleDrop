@@ -391,7 +391,6 @@
         body.mobile .stat-label { font-size: 8px; }
         /* Icon buttons: compact square with large symbol */
         body.mobile button { padding: 6px 7px; font-size: 18px; border-width: 3px; line-height: 1; }
-        body.mobile #sfx-btn { padding: 6px 7px; font-size: 18px; }
 
         body.mobile .main {
             flex-wrap: wrap;
@@ -658,7 +657,7 @@
 
         // ── Game modes ───────────────────────────────────────────────────────────
         let gameMode    = 'classic'; // 'classic' | 'timed' | 'sprint'
-        const MODE_NAMES = ['CLASSIC', 'TIMED', 'SPRINT'];
+        // MODE_NAMES removed — gameMode.toUpperCase() used directly
         const TIMED_MS   = 90000;  // 90 seconds
         const SPRINT_TARGET = 10;  // byte-clears to win sprint
         let timedRemaining  = TIMED_MS;
@@ -737,15 +736,14 @@
             const modeBtn  = document.getElementById('mode-btn');
             bitBtn.textContent   = bitLabel;
             spdBtn.textContent   = spdLabel;
-            if (modeBtn) { modeBtn.textContent = modeLabel; modeBtn.disabled = false; }
-            bitBtn.disabled      = false;
+            if (modeBtn) modeBtn.textContent = modeLabel;
             // Mobile menu buttons
             const mb  = document.getElementById('menu-bit-btn');
             const ms  = document.getElementById('menu-speed-btn');
             const mm  = document.getElementById('menu-mode-btn');
-            if (mb) { mb.textContent = '\u26a1\u00a0 ' + bitLabel; mb.disabled = false; }
-            if (ms)   ms.textContent = '\ud83c\udfce\ufe0f\u00a0 ' + spdLabel;
-            if (mm) { mm.textContent = '\ud83c\udfae\u00a0 ' + modeLabel; mm.disabled = false; }
+            if (mb) mb.textContent = '\u26a1\u00a0 ' + bitLabel;
+            if (ms) ms.textContent = '\ud83c\udfce\ufe0f\u00a0 ' + spdLabel;
+            if (mm) mm.textContent = '\ud83c\udfae\u00a0 ' + modeLabel;
             // Update instructions byte-row line
             const byteSpan = document.getElementById('byte-line');
             if (byteSpan) {
@@ -890,7 +888,7 @@
             return false;
         }
         
-        function hardDrop() {
+        function hardDrop() { // reserved for future use
             if (!currentPiece || isSettling) return;
             while (moveDown()) {}
             lockPiece();
@@ -1413,7 +1411,6 @@
             document.getElementById('high-score').textContent = String(highScore).padStart(6, '0');
             // Second stat: LEVEL for classic, time-remaining for timed, bytes/target for sprint
             const levelEl    = document.getElementById('level');
-            const levelLabel = document.querySelector('#level + .stat-label') || document.querySelector('.stat-label[for="level"]');
             const statLabelEl = document.getElementById('level-label');
             if (gameMode === 'timed') {
                 const secLeft = Math.max(0, Math.ceil(timedRemaining / 1000));
@@ -1445,6 +1442,7 @@
                     drawBoard();
                     updateUI();
                     endGame('timed-end');
+                    rafId = requestAnimationFrame(gameLoop); // keep loop alive for next game
                     return;
                 }
             }
@@ -1589,8 +1587,12 @@
         }
         
         function endGame(reason) {
-            gameRunning = false; gameOverFlag = true;
+            gameRunning = false; gameOverFlag = true; paused = false;
             document.getElementById('game-container').classList.remove('danger');
+            flashTimers.forEach(clearTimeout); flashTimers = [];
+            flashQueue.length = 0; flashBusy = false;
+            document.getElementById('byte-flash').style.display = 'none';
+            document.getElementById('pause-btn').classList.remove('menu-open');
             if (score > highScore) {
                 highScore = score;
                 localStorage.setItem('nybbleHighScore', highScore);
