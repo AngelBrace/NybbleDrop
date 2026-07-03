@@ -631,19 +631,29 @@
 
         // Shared mobile canvas sizing — canvas is a fixed physical size regardless of bit mode.
         // 16-bit fits double the cells at half the cell size in the same pixel area.
+        // Calibrated from diagnostic data on 419px-wide Android (Jul 2026):
+        //   target canvas ≈ 256px wide  →  side panel ≈ 128px wide  →  next-canvas ≈ 40px
         function applyMobileCanvasSize() {
-            // Always size based on the 8-bit grid (8 cols, 10 rows) so the box never changes
-            const baseCell = Math.max(20, Math.floor((window.innerWidth * 0.53 - 14) / 8));
-            canvas.width   = baseCell * 8;   // fixed width
-            canvas.height  = baseCell * 10;  // fixed height
-            // CELL is then derived from the fixed canvas size so cells fill it exactly
-            CELL = canvas.width / WIDTH;     // baseCell for 8-bit, baseCell/2 for 16-bit
-            const sidePanelW = window.innerWidth - canvas.width
-                               - 12   // game border (6px each side)
-                               - 12   // side panel border
-                               - 8    // gap between panels
-                               - 20;  // side panel padding (10px each side)
-            nextCanvas.width  = Math.max(60, Math.round(sidePanelW * 0.32));
+            // 0.65 multiplier targets ~256px canvas on a 419px screen, leaving ~128px for the side panel.
+            const baseCell = Math.max(20, Math.floor((window.innerWidth * 0.65 - 14) / 8));
+            canvas.width   = baseCell * 8;
+            canvas.height  = baseCell * 10;
+            CELL = canvas.width / WIDTH;
+
+            // Side panel border-box = all remaining space after canvas, gap, and main padding.
+            // Setting it explicitly here (rather than relying on flex:1) ensures it stays
+            // correct even when the Android viewport shifts as browser chrome shows/hides.
+            const spBorderBox = Math.max(40, window.innerWidth - 16 - (canvas.width + 12) - 8);
+            const sp = document.querySelector('.side-panel');
+            if (sp) {
+                sp.style.boxSizing = 'border-box';
+                sp.style.width     = spBorderBox + 'px';
+                sp.style.flex      = 'none';
+            }
+
+            // Next-canvas: 42% of side panel content area gives ~40px on the calibration device.
+            const spContentW  = spBorderBox - 12 - 20; // subtract 6px×2 border + 10px×2 padding
+            nextCanvas.width  = Math.max(30, Math.round(spContentW * 0.42));
             nextCanvas.height = Math.round(nextCanvas.width * (120 / 260));
         }
 
@@ -1885,22 +1895,7 @@
                 document.getElementById('restart-btn').textContent = '↺';
             }
 
-            // Lock mobile side panel to its startup rendered width.
-            // getBoundingClientRect returns the border-box width, so we must
-            // set box-sizing:border-box before assigning it to style.width,
-            // otherwise the browser adds padding+border on top and the panel
-            // overflows its row, stacking everything vertically.
-            if (isMobile) {
-                requestAnimationFrame(() => {
-                    const sp = document.querySelector('.side-panel');
-                    if (sp) {
-                        const w = sp.getBoundingClientRect().width;
-                        sp.style.boxSizing = 'border-box';
-                        sp.style.width = w + 'px';
-                        sp.style.flex  = 'none';
-                    }
-                });
-            }
+            // Side panel width is set directly in applyMobileCanvasSize() — no rAF lock needed.
 
             // Wire touch events after DOM is ready
             bindTouchKey('q',
