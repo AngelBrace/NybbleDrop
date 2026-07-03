@@ -278,6 +278,7 @@
 
         /* Mobile: show MENU, hide original 3 buttons */
         body.mobile #menu-btn { display: inline-block; font-size: 14px; font-weight: bold; padding: 7px 10px; }
+        body.mobile #menu-btn.menu-open { background: var(--accent); color: #111122; box-shadow: none; }
         body.mobile #bit-btn,
         body.mobile #speed-btn,
         body.mobile #mode-btn,
@@ -1641,11 +1642,11 @@
             document.getElementById('menu-sfx-btn').textContent  =
                 soundEnabled ? '🔊\u00a0 SOUND ON' : '🔇\u00a0 SOUND OFF';
             document.getElementById('menu-overlay').classList.add('open');
-            document.getElementById('menu-btn').textContent = '\u25b6 RESUME';
+            document.getElementById('menu-btn').classList.add('menu-open');
         }
 
         function closeMenu() {
-            document.getElementById('menu-btn').textContent = 'MENU';
+            document.getElementById('menu-btn').classList.remove('menu-open');
             document.getElementById('menu-overlay').classList.remove('open');
             if (gameRunning && paused) {
                 paused = false;
