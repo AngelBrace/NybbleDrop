@@ -450,6 +450,15 @@
         }
         body.mobile .byte-flash .flash-score { font-size: 34px; }
 
+        /* Graphics overlay preset button active state */
+        .gfx-preset-row { display: flex; gap: 5px; width: 100%; margin-bottom: 6px; }
+        .gfx-preset-row button { flex: 1; font-size: 8px; padding: 5px 2px; }
+        .gfx-preset-row button.gfx-active {
+            background: var(--accent);
+            color: #111122;
+            box-shadow: 0 0 10px var(--accent);
+        }
+
         body.mobile .nybble-info-bar {
             font-size: 11px;
             gap: 10px;
@@ -465,7 +474,7 @@
 </head>
 <body>
     <header>
-        <div class="title" id="title-diag" onclick="if(typeof openDiag==='function') openDiag();" style="cursor:pointer;">NYBBLEDROP</div>
+        <div class="title" id="title-diag" onclick="if(typeof openGraphics==='function') openGraphics();" style="cursor:pointer;">NYBBLEDROP</div>
         <div class="stats">
             <div class="stat">
                 <span id="score" class="stat-value">000000</span>
@@ -507,7 +516,7 @@
                     <button id="menu-mode-btn"   onclick="cycleGameMode()">🎮&nbsp; CLASSIC</button>
                     <button id="menu-vis-btn"    onclick="cycleVisualMode()">🎨&nbsp; BLOCK</button>
                     <button id="menu-sfx-btn"    onclick="toggleSoundFromMenu()">🔊&nbsp; SOUND ON</button>
-                    <button                       onclick="openDiag()">🔧&nbsp; LAYOUT DIAG</button>
+                    <button                       onclick="openGraphics()">🖥&nbsp; GRAPHICS</button>
                     <button                       onclick="restartFromMenu()">↺&nbsp; PLAY</button>
                 </div>
             </div>
@@ -520,26 +529,39 @@
                 <p id="end-flavor" style="margin-top: 40px; font-size:12px; opacity:0.6;">The binary pile reached the top...</p>
             </div>
 
-            <!-- Mobile layout diagnostic overlay -->
+            <!-- Mobile Graphics settings overlay -->
             <div id="diag-overlay" class="menu-overlay" style="gap:0; padding:8px 10px; justify-content:space-evenly; align-items:stretch; text-align:left;">
-                <div style="color:#00ffcc; font-size:10px; letter-spacing:3px; text-align:center; margin-bottom:4px;">— LAYOUT DIAG —</div>
+                <div style="color:#00ffcc; font-size:10px; letter-spacing:3px; text-align:center; margin-bottom:6px;">— GRAPHICS —</div>
 
+                <!-- Device presets -->
+                <div class="gfx-preset-row">
+                    <button id="gfx-btn-phone"     onclick="applyPreset('phone')">PHONE</button>
+                    <button id="gfx-btn-tablet"    onclick="applyPreset('tablet')">TABLET</button>
+                    <button id="gfx-btn-landscape" onclick="applyPreset('landscape')">LANDSCAPE</button>
+                    <button id="gfx-btn-auto"      onclick="applyPreset('auto')">AUTO</button>
+                </div>
+
+                <!-- Live readout -->
                 <div style="font-size:8px; opacity:0.7; margin-bottom:2px;">SCREEN</div>
-                <div style="font-size:12px; color:#00ffcc; margin-bottom:8px;" id="diag-win">--</div>
+                <div style="font-size:11px; color:#00ffcc; margin-bottom:6px;" id="diag-win">--</div>
 
                 <div style="font-size:8px; opacity:0.7; margin-bottom:2px;">CANVAS</div>
-                <div style="font-size:12px; color:#00ffcc; margin-bottom:8px;" id="diag-canvas">--</div>
+                <div style="font-size:11px; color:#00ffcc; margin-bottom:6px;" id="diag-canvas">--</div>
 
-                <div style="font-size:8px; opacity:0.7; margin-bottom:2px;">SIDE PANEL WIDTH &nbsp;<span style="color:#ff0;">(A / D)</span></div>
-                <div style="font-size:22px; color:#ff0; font-weight:bold; margin-bottom:4px;" id="diag-sp-w">--</div>
+                <div style="font-size:8px; opacity:0.7; margin-bottom:2px;">PANEL WIDTH &nbsp;<span style="color:#ff0;">(A / D)</span></div>
+                <div style="font-size:18px; color:#ff0; font-weight:bold; margin-bottom:3px;" id="diag-sp-w">--</div>
 
-                <div style="font-size:8px; opacity:0.7; margin-bottom:2px;">SIDE PANEL HEIGHT &nbsp;<span style="color:#ff9900;">(W / S)</span></div>
-                <div style="font-size:22px; color:#ff9900; font-weight:bold; margin-bottom:8px;" id="diag-sp-h">--</div>
+                <div style="font-size:8px; opacity:0.7; margin-bottom:2px;">PANEL HEIGHT &nbsp;<span style="color:#ff9900;">(W / S)</span></div>
+                <div style="font-size:18px; color:#ff9900; font-weight:bold; margin-bottom:6px;" id="diag-sp-h">--</div>
 
                 <div style="font-size:8px; opacity:0.7; margin-bottom:2px;">NEXT CANVAS</div>
-                <div style="font-size:12px; color:#00ffcc; margin-bottom:8px;" id="diag-next">--</div>
+                <div style="font-size:11px; color:#00ffcc; margin-bottom:6px;" id="diag-next">--</div>
 
-                <button onclick="closeDiag()" style="font-size:10px; padding:7px 18px; margin-top:4px; width:100%;">✕ DONE</button>
+                <!-- Action row -->
+                <div style="display:flex; gap:6px; margin-top:4px;">
+                    <button onclick="saveGraphics()" style="flex:1; font-size:10px; padding:7px 4px; background:var(--accent); color:#111122;">SAVE</button>
+                    <button onclick="closeGraphics()" style="flex:1; font-size:10px; padding:7px 4px;">✕ DONE</button>
+                </div>
             </div>
         </div>
 
@@ -651,9 +673,9 @@
                 sp.style.flex      = 'none';
             }
 
-            // Next-canvas: 42% of side panel content area gives ~40px on the calibration device.
+            // Next-canvas: 69% of side panel content area gives ~72px on the calibration device.
             const spContentW  = spBorderBox - 12 - 20; // subtract 6px×2 border + 10px×2 padding
-            nextCanvas.width  = Math.max(30, Math.round(spContentW * 0.42));
+            nextCanvas.width  = Math.max(30, Math.round(spContentW * 0.69));
             nextCanvas.height = Math.round(nextCanvas.width * (120 / 260));
         }
 
@@ -1580,7 +1602,9 @@
             BYTE_SCORE = (bitMode === 16) ? 510 : 255;
 
             if (isMobile) {
-                applyMobileCanvasSize(); // same formula as startup — no size drift
+                // Layout is frozen at startup — only recalc CELL for bit-mode changes.
+                // Canvas dimensions never change after load, so no border flash.
+                CELL = canvas.width / WIDTH;
             } else {
                 // Desktop: fixed canvas based on 8-bit cell size, 16-bit uses half-cell
                 const baseCell = 64;
@@ -1718,17 +1742,70 @@
             startGame();
         }
 
-        // ── Layout Diagnostic (mobile only) ──────────────────────────────────
-        function openDiag() {
+        // ── Graphics settings (mobile only) ──────────────────────────────────
+
+        // Calibrated from diagnostic data on 419px-wide Android (Jul 2026).
+        // canvasW/H = canvas drawing-buffer pixels; panelW = side panel border-box; nextW = next-canvas width.
+        const GFX_PRESETS = {
+            phone:     { canvasW: 256, canvasH: 320, panelW: 136, nextW: 72 },
+            tablet:    { canvasW: 320, canvasH: 400, panelW: 180, nextW: 90 },
+            landscape: { canvasW: 320, canvasH: 260, panelW: 160, nextW: 80 },
+            auto:      null  // null = re-run the formula
+        };
+
+        let activePreset = 'auto';
+
+        function applyPreset(name) {
+            activePreset = name;
+            const p = GFX_PRESETS[name];
+            if (p) {
+                // Fixed preset — apply values directly
+                canvas.width      = p.canvasW;
+                canvas.height     = p.canvasH;
+                CELL              = canvas.width / WIDTH;
+                const sp = document.querySelector('.side-panel');
+                if (sp) {
+                    sp.style.boxSizing = 'border-box';
+                    sp.style.width     = p.panelW + 'px';
+                    sp.style.flex      = 'none';
+                }
+                nextCanvas.width  = p.nextW;
+                nextCanvas.height = Math.round(p.nextW * (120 / 260));
+            } else {
+                // Auto — re-run the formula fresh
+                applyMobileCanvasSize();
+            }
+            drawBoard();
+            drawNextPiece();
+            updateDiagDisplay();
+            // Highlight the active preset button
+            ['phone','tablet','landscape','auto'].forEach(n => {
+                const btn = document.getElementById('gfx-btn-' + n);
+                if (btn) btn.classList.toggle('gfx-active', n === name);
+            });
+        }
+
+        function openGraphics() {
             closeMenu();
             diagMode = true;
+            // Highlight whichever preset is currently saved
+            const saved = localStorage.getItem('nybbleGfxPreset') || 'auto';
+            ['phone','tablet','landscape','auto'].forEach(n => {
+                const btn = document.getElementById('gfx-btn-' + n);
+                if (btn) btn.classList.toggle('gfx-active', n === saved);
+            });
             document.getElementById('diag-overlay').classList.add('open');
             updateDiagDisplay();
         }
-        function closeDiag() {
+        function closeGraphics() {
             diagMode = false;
             document.getElementById('diag-overlay').classList.remove('open');
         }
+        function saveGraphics() {
+            localStorage.setItem('nybbleGfxPreset', activePreset);
+            closeGraphics();
+        }
+
         function adjustDiagWidth(delta) {
             const sp = document.querySelector('.side-panel');
             if (!sp) return;
@@ -1737,11 +1814,11 @@
             sp.style.boxSizing = 'border-box';
             sp.style.width     = newW + 'px';
             sp.style.flex      = 'none';
-            const contentW = newW - 12 - 20; // 6px border × 2 + 10px padding × 2
-            const nextW    = Math.max(40, Math.round(contentW * 0.32));
-            nextCanvas.width  = nextW;
-            nextCanvas.height = Math.round(nextW * (120 / 260));
+            const contentW    = newW - 12 - 20;
+            nextCanvas.width  = Math.max(30, Math.round(contentW * 0.69));
+            nextCanvas.height = Math.round(nextCanvas.width * (120 / 260));
             drawNextPiece();
+            activePreset = 'custom';
             updateDiagDisplay();
         }
         function adjustDiagHeight(delta) {
@@ -1751,17 +1828,16 @@
             const newH = Math.max(80, Math.round(current + delta));
             sp.style.boxSizing = 'border-box';
             sp.style.height    = newH + 'px';
+            activePreset = 'custom';
             updateDiagDisplay();
         }
         function updateDiagDisplay() {
             const sp   = document.querySelector('.side-panel');
             const rect = sp ? sp.getBoundingClientRect() : { width: 0, height: 0 };
-            const spW  = Math.round(rect.width);
-            const spH  = Math.round(rect.height);
             document.getElementById('diag-win').textContent    = window.innerWidth + ' × ' + window.innerHeight;
             document.getElementById('diag-canvas').textContent = canvas.width + ' × ' + canvas.height;
-            document.getElementById('diag-sp-w').textContent   = spW + 'px';
-            document.getElementById('diag-sp-h').textContent   = spH + 'px';
+            document.getElementById('diag-sp-w').textContent   = Math.round(rect.width) + 'px';
+            document.getElementById('diag-sp-h').textContent   = Math.round(rect.height) + 'px';
             document.getElementById('diag-next').textContent   = nextCanvas.width + 'px';
         }
         // ─────────────────────────────────────────────────────────────────────
@@ -1896,6 +1972,14 @@
             }
 
             // Side panel width is set directly in applyMobileCanvasSize() — no rAF lock needed.
+            // If the user previously saved a Graphics preset, apply it now (all functions are defined).
+            if (isMobile) {
+                const savedPreset = localStorage.getItem('nybbleGfxPreset');
+                if (savedPreset && GFX_PRESETS[savedPreset] !== undefined) {
+                    applyPreset(savedPreset);
+                    activePreset = savedPreset;
+                }
+            }
 
             // Wire touch events after DOM is ready
             bindTouchKey('q',
