@@ -605,11 +605,15 @@
         // Detect mobile: touch device under 900 px wide
         const isMobile = navigator.maxTouchPoints > 0 && window.innerWidth < 900;
 
-        // Shared mobile canvas sizing — called at startup and in startGame()
+        // Shared mobile canvas sizing — canvas is a fixed physical size regardless of bit mode.
+        // 16-bit fits double the cells at half the cell size in the same pixel area.
         function applyMobileCanvasSize() {
-            CELL = Math.max(20, Math.floor((window.innerWidth * 0.53 - 14) / WIDTH));
-            canvas.width  = CELL * WIDTH;
-            canvas.height = CELL * HEIGHT;
+            // Always size based on the 8-bit grid (8 cols, 10 rows) so the box never changes
+            const baseCell = Math.max(20, Math.floor((window.innerWidth * 0.53 - 14) / 8));
+            canvas.width   = baseCell * 8;   // fixed width
+            canvas.height  = baseCell * 10;  // fixed height
+            // CELL is then derived from the fixed canvas size so cells fill it exactly
+            CELL = canvas.width / WIDTH;     // baseCell for 8-bit, baseCell/2 for 16-bit
             const sidePanelW = window.innerWidth - canvas.width
                                - 12   // game border (6px each side)
                                - 12   // side panel border
@@ -1539,10 +1543,12 @@
             if (isMobile) {
                 applyMobileCanvasSize(); // same formula as startup — no size drift
             } else {
-                CELL = (bitMode === 16) ? 32 : 64;
+                // Desktop: fixed canvas based on 8-bit cell size, 16-bit uses half-cell
+                const baseCell = 64;
+                canvas.width   = baseCell * 8;
+                canvas.height  = baseCell * 10;
+                CELL = canvas.width / WIDTH; // 64 for 8-bit, 32 for 16-bit
             }
-            canvas.width  = CELL * WIDTH;
-            canvas.height = CELL * HEIGHT;
             // ────────────────────────────────────────────────────────────────
 
             board = Array.from({ length: HEIGHT }, () => Array(WIDTH).fill(null));
