@@ -1269,25 +1269,31 @@
                     }
                     ctx.globalAlpha = 1;
                 } else {
+                    ctx.globalAlpha = 0.30; // 70% transparent mirror of live piece
+                    ctx.shadowBlur  = 0;
                     for (const p of ghost) {
                         if (p.r < 0) continue;
                         const gbx = p.c*CELL + 2, gby = p.r*CELL + 2;
                         const gbw = CELL - 4,      gbh = CELL - 4;
                         const isOne = p.d === '1';
-                        // Semi-transparent fill for a ghostly appearance
-                        ctx.globalAlpha = 0.18;
-                        ctx.fillStyle   = isOne ? 'rgba(40,120,255,1)' : 'rgba(150,150,165,1)';
-                        drawRRect(ctx, gbx, gby, gbw, gbh, radius);
-                        ctx.fill();
-                        // Slightly brighter outline on top
-                        ctx.globalAlpha = 0.35;
-                        ctx.shadowBlur  = 0;
-                        ctx.strokeStyle = isOne ? '#2878ff' : '#9696a5';
-                        ctx.lineWidth   = 1.5;
-                        drawRRect(ctx, gbx, gby, gbw, gbh, radius);
-                        ctx.stroke();
-                        ctx.globalAlpha = 1;
+                        if (visualMode === 1) {
+                            // BLOCK: same solid fill + white border as live piece
+                            ctx.fillStyle   = isOne ? 'rgba(40,120,255,0.90)' : 'rgba(150,150,165,0.55)';
+                            drawRRect(ctx, gbx, gby, gbw, gbh, radius);
+                            ctx.fill();
+                            ctx.strokeStyle = '#ffffff';
+                            ctx.lineWidth   = 1;
+                            drawRRect(ctx, gbx, gby, gbw, gbh, radius);
+                            ctx.stroke();
+                        } else {
+                            // LINES: just the coloured border (pattern too busy at low opacity)
+                            ctx.strokeStyle = isOne ? '#2878ff' : '#9696a5';
+                            ctx.lineWidth   = 1.5;
+                            drawRRect(ctx, gbx, gby, gbw, gbh, radius);
+                            ctx.stroke();
+                        }
                     }
+                    ctx.globalAlpha = 1;
                 }
             }
 
